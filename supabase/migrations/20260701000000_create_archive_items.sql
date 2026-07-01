@@ -1,4 +1,5 @@
 create extension if not exists pg_trgm;
+create extension if not exists pgcrypto;
 
 create table if not exists public.archive_items (
   id uuid primary key default gen_random_uuid(),
