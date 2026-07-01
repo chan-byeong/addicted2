@@ -36,8 +36,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    ".next/types/validator.ts",
-    ".next/dev/types/validator.ts"
+    "node_modules"
   ]
 }
