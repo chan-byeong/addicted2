@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   ArchiveItem,
@@ -8,6 +6,82 @@ import type {
   ArchiveItemUpdateInput,
   ItemListParams,
 } from "@/types/archive";
+
+const QUERY_CANDIDATE_LIMIT = 200;
+const SUPABASE_NO_ROWS_CODE = "PGRST116";
+
+type SupabaseErrorLike = {
+  message: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function isSupabaseErrorLike(error: unknown): error is SupabaseErrorLike {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as SupabaseErrorLike).message === "string"
+  );
+}
+
+export class ArchiveRepositoryError extends Error {
+  kind: "supabase" | "not_found";
+  code?: string;
+  details?: string;
+  hint?: string;
+
+  constructor({
+    kind,
+    message,
+    code,
+    details,
+    hint,
+    cause,
+  }: {
+    kind: "supabase" | "not_found";
+    message: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+    cause?: unknown;
+  }) {
+    super(message, cause === undefined ? undefined : { cause });
+    this.name = "ArchiveRepositoryError";
+    this.kind = kind;
+    this.code = code;
+    this.details = details;
+    this.hint = hint;
+  }
+}
+
+export function toArchiveRepositoryError(
+  error: unknown,
+  kind: ArchiveRepositoryError["kind"] = "supabase",
+  message?: string,
+) {
+  if (!isSupabaseErrorLike(error)) {
+    return new ArchiveRepositoryError({
+      kind,
+      message: message ?? "Archive repository operation failed",
+      cause: error,
+    });
+  }
+
+  return new ArchiveRepositoryError({
+    kind,
+    message: message ?? error.message,
+    code: error.code,
+    details: error.details ?? undefined,
+    hint: error.hint ?? undefined,
+    cause: error,
+  });
+}
+
+function isNotFoundSingleError(error: unknown) {
+  return isSupabaseErrorLike(error) && error.code === SUPABASE_NO_ROWS_CODE;
+}
 
 function mapArchiveItem(row: ArchiveItemRow): ArchiveItem {
   return {
@@ -24,6 +98,45 @@ function mapArchiveItem(row: ArchiveItemRow): ArchiveItem {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function normalizeQueryValue(value: string | undefined) {
+  const normalized = value?.trim();
+
+  return normalized && normalized.length > 0 ? normalized.toLowerCase() : null;
+}
+
+function getArchiveItemSearchText(item: Pick<ArchiveItem, "title" | "description" | "note" | "url" | "siteName">) {
+  return [
+    item.title,
+    item.description,
+    item.note,
+    item.url,
+    item.siteName,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .join("\n")
+    .toLowerCase();
+}
+
+export function matchesArchiveItemQuery(
+  item: Pick<ArchiveItem, "title" | "description" | "note" | "url" | "siteName">,
+  query: string,
+) {
+  const normalizedQuery = normalizeQueryValue(query);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return getArchiveItemSearchText(item).includes(normalizedQuery);
+}
+
+export function filterArchiveItemsByQuery(
+  items: ArchiveItem[],
+  query: string,
+) {
+  return items.filter((item) => matchesArchiveItemQuery(item, query));
 }
 
 function toInsertRow(input: ArchiveItemInput) {
@@ -59,42 +172,37 @@ function toUpdateRow(input: ArchiveItemUpdateInput) {
 export async function listArchiveItems(params: ItemListParams) {
   const supabase = createServerSupabaseClient();
   const limit = params.limit ?? 50;
+  const hasQuery = Boolean(normalizeQueryValue(params.query));
+  const candidateLimit = hasQuery ? Math.max(limit, QUERY_CANDIDATE_LIMIT) : limit;
 
-  let query = supabase
+  let queryBuilder = supabase
     .from("archive_items")
     .select("*")
     .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("created_at", { ascending: false });
 
   if (params.date) {
-    query = query.eq("entry_date", params.date);
+    queryBuilder = queryBuilder.eq("entry_date", params.date);
   }
 
   if (params.sourceType && params.sourceType !== "all") {
-    query = query.eq("source_type", params.sourceType);
+    queryBuilder = queryBuilder.eq("source_type", params.sourceType);
   }
 
-  if (params.query) {
-    const search = `%${params.query}%`;
-    query = query.or(
-      [
-        `title.ilike.${search}`,
-        `description.ilike.${search}`,
-        `note.ilike.${search}`,
-        `url.ilike.${search}`,
-        `site_name.ilike.${search}`,
-      ].join(","),
-    );
-  }
+  queryBuilder = queryBuilder.limit(candidateLimit);
 
-  const { data, error } = await query;
+  const { data, error } = await queryBuilder;
 
   if (error) {
-    throw new Error(error.message);
+    throw toArchiveRepositoryError(error);
   }
 
-  return (data as ArchiveItemRow[]).map(mapArchiveItem);
+  const items = (data as ArchiveItemRow[]).map(mapArchiveItem);
+  const filteredItems = hasQuery
+    ? filterArchiveItemsByQuery(items, params.query ?? "")
+    : items;
+
+  return filteredItems.slice(0, limit);
 }
 
 export async function createArchiveItem(input: ArchiveItemInput) {
@@ -106,7 +214,7 @@ export async function createArchiveItem(input: ArchiveItemInput) {
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw toArchiveRepositoryError(error);
   }
 
   return mapArchiveItem(data as ArchiveItemRow);
@@ -126,7 +234,7 @@ export async function updateArchiveItem(
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw toArchiveRepositoryError(error, "supabase");
   }
 
   return mapArchiveItem(data as ArchiveItemRow);
@@ -134,13 +242,26 @@ export async function updateArchiveItem(
 
 export async function softDeleteArchiveItem(id: string) {
   const supabase = createServerSupabaseClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("archive_items")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id")
+    .single();
 
   if (error) {
-    throw new Error(error.message);
+    if (isNotFoundSingleError(error)) {
+      throw toArchiveRepositoryError(error, "not_found", "Archive item not found");
+    }
+
+    throw toArchiveRepositoryError(error);
+  }
+
+  if (!data) {
+    throw new ArchiveRepositoryError({
+      kind: "not_found",
+      message: "Archive item not found",
+    });
   }
 }

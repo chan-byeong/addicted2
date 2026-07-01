@@ -19,13 +19,19 @@ export function getPublicEnv() {
   };
 }
 
-export function getServerEnv() {
+export function getSupabaseServerEnv() {
   return {
     ...getPublicEnv(),
     supabaseServiceRoleKey: readRequiredEnv(
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       "SUPABASE_SERVICE_ROLE_KEY",
     ),
+  };
+}
+
+export function getServerEnv() {
+  return {
+    ...getSupabaseServerEnv(),
     archiveWritePassword: readRequiredEnv(
       process.env.ARCHIVE_WRITE_PASSWORD,
       "ARCHIVE_WRITE_PASSWORD",
