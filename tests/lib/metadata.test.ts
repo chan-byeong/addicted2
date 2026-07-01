@@ -56,6 +56,56 @@ describe("fetchLinkMetadata", () => {
     });
   });
 
+  it("returns a recoverable failure when fetch throws", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      }),
+    );
+
+    const metadata = await fetchLinkMetadata("https://example.com/post");
+
+    expect(metadata).toEqual({
+      ok: false,
+      url: "https://example.com/post",
+      sourceType: "other",
+      message: "network down",
+    });
+  });
+
+  it("returns a recoverable failure for non-HTML responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    );
+
+    const metadata = await fetchLinkMetadata("https://example.com/post");
+
+    expect(metadata).toEqual({
+      ok: false,
+      url: "https://example.com/post",
+      sourceType: "other",
+      message: "Metadata response was not HTML",
+    });
+  });
+
+  it("returns a stable failure for invalid URLs", async () => {
+    const metadata = await fetchLinkMetadata("not a url");
+
+    expect(metadata).toEqual({
+      ok: false,
+      url: "not a url",
+      sourceType: "other",
+      message: "Invalid URL",
+    });
+  });
+
   it("classifies YouTube shorts URLs", async () => {
     vi.stubGlobal(
       "fetch",
@@ -101,6 +151,41 @@ describe("fetchLinkMetadata", () => {
       title: "example.com",
       description: null,
       imageUrl: null,
+      siteName: "example.com",
+      sourceType: "other",
+    });
+  });
+
+  it("reads alternate image selectors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          `
+            <html>
+              <head>
+                <meta property="og:title" content="OG title" />
+                <meta property="og:image:url" content="/alt-image.jpg" />
+                <meta name="twitter:image:src" content="/twitter-image.jpg" />
+              </head>
+            </html>
+          `,
+          {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          },
+        ),
+      ),
+    );
+
+    const metadata = await fetchLinkMetadata("https://example.com/post");
+
+    expect(metadata).toEqual({
+      ok: true,
+      url: "https://example.com/post",
+      title: "OG title",
+      description: null,
+      imageUrl: "https://example.com/alt-image.jpg",
       siteName: "example.com",
       sourceType: "other",
     });

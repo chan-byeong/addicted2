@@ -1,3 +1,5 @@
+import "server-only";
+
 import * as cheerio from "cheerio";
 
 import { detectSourceType } from "@/lib/source-type";
@@ -47,20 +49,21 @@ function absolutizeUrl(value: string | null, baseUrl: string) {
 
 function createTimeoutSignal(timeoutMs: number) {
   if (typeof AbortSignal.timeout === "function") {
-    return AbortSignal.timeout(timeoutMs);
+    return {
+      signal: AbortSignal.timeout(timeoutMs),
+      cleanup() {},
+    };
   }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  controller.signal.addEventListener(
-    "abort",
-    () => {
+
+  return {
+    signal: controller.signal,
+    cleanup() {
       clearTimeout(timeoutId);
     },
-    { once: true },
-  );
-
-  return controller.signal;
+  };
 }
 
 export async function fetchLinkMetadata(
@@ -70,16 +73,17 @@ export async function fetchLinkMetadata(
 
   try {
     url = new URL(rawUrl).toString();
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       url: rawUrl,
       sourceType: detectSourceType(rawUrl),
-      message: error instanceof Error ? error.message : "Invalid URL",
+      message: "Invalid URL",
     };
   }
 
   const sourceType = detectSourceType(url);
+  const { signal, cleanup } = createTimeoutSignal(7000);
 
   try {
     const response = await fetch(url, {
@@ -88,7 +92,7 @@ export async function fetchLinkMetadata(
         "user-agent":
           "Mozilla/5.0 (compatible; CommunityLinkArchive/1.0; +https://example.com)",
       },
-      signal: createTimeoutSignal(7000),
+      signal,
     });
 
     if (!response.ok) {
@@ -131,7 +135,9 @@ export async function fetchLinkMetadata(
     const imageUrl = absolutizeUrl(
       firstContent($, [
         'meta[property="og:image"]',
+        'meta[property="og:image:url"]',
         'meta[name="twitter:image"]',
+        'meta[name="twitter:image:src"]',
       ]),
       url,
     );
@@ -153,5 +159,7 @@ export async function fetchLinkMetadata(
       sourceType,
       message: error instanceof Error ? error.message : "Metadata request failed",
     };
+  } finally {
+    cleanup();
   }
 }
