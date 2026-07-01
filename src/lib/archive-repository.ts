@@ -234,7 +234,15 @@ export async function updateArchiveItem(
     .single();
 
   if (error) {
-    throw toArchiveRepositoryError(error, "supabase");
+    if (isNotFoundSingleError(error)) {
+      throw toArchiveRepositoryError(
+        error,
+        "not_found",
+        "Archive item not found",
+      );
+    }
+
+    throw toArchiveRepositoryError(error);
   }
 
   return mapArchiveItem(data as ArchiveItemRow);

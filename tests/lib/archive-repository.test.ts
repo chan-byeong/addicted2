@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ArchiveRepositoryError,
   filterArchiveItemsByQuery,
   matchesArchiveItemQuery,
+  updateArchiveItem,
   toArchiveRepositoryError,
 } from "@/lib/archive-repository";
 import type { ArchiveItem } from "@/types/archive";
+
+vi.mock("@/lib/supabase/server", () => ({
+  createServerSupabaseClient: vi.fn(),
+}));
 
 const sampleItem = {
   id: "1",
@@ -72,5 +77,33 @@ describe("ArchiveRepositoryError", () => {
     expect(error.message).toBe("Archive item not found");
     expect(error.code).toBe("PGRST116");
     expect(error.details).toBe("0 rows");
+  });
+
+  it("maps a no-row Supabase error from updateArchiveItem to not_found", async () => {
+    const error = {
+      message: "JSON object requested, multiple (or no) rows returned",
+      code: "PGRST116",
+      details: "0 rows",
+      hint: "Use maybeSingle()",
+    };
+    const single = vi.fn().mockResolvedValue({ data: null, error });
+    const select = vi.fn().mockReturnValue({ single });
+    const is = vi.fn().mockReturnValue({ select });
+    const eq = vi.fn().mockReturnValue({ is });
+    const update = vi.fn().mockReturnValue({ eq });
+    const from = vi.fn().mockReturnValue({ update });
+
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
+    vi.mocked(createServerSupabaseClient).mockReturnValue({ from } as never);
+
+    await expect(
+      updateArchiveItem("item-1", { title: "Updated title" }),
+    ).rejects.toMatchObject({
+      kind: "not_found",
+      message: "Archive item not found",
+      code: "PGRST116",
+      details: "0 rows",
+      hint: "Use maybeSingle()",
+    });
   });
 });
