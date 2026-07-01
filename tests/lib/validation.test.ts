@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+import {
+  itemListParamsSchema,
+  metadataRequestSchema,
+  upsertItemSchema,
+} from "@/lib/validation";
+
+describe("validation schemas", () => {
+  it("parses valid item input", () => {
+    const result = upsertItemSchema.parse({
+      url: "https://example.com/a",
+      title: "Example title",
+      sourceType: "other",
+      authorName: "민수",
+      entryDate: "2026-07-01",
+      password: "secret",
+    });
+
+    expect(result.title).toBe("Example title");
+    expect(result.url).toBe("https://example.com/a");
+  });
+
+  it("rejects invalid URLs and dates", () => {
+    expect(() =>
+      upsertItemSchema.parse({
+        url: "invalid",
+        title: "Example title",
+        sourceType: "other",
+        authorName: "민수",
+        entryDate: "2026-7-1",
+        password: "secret",
+      }),
+    ).toThrow();
+  });
+
+  it("normalizes metadata requests", () => {
+    expect(
+      metadataRequestSchema.parse({ url: "https://example.com" }).url,
+    ).toBe("https://example.com/");
+  });
+
+  it("normalizes list params", () => {
+    expect(
+      itemListParamsSchema.parse({
+        date: "2026-07-01",
+        sourceType: "all",
+        limit: "5",
+      }).limit,
+    ).toBe(5);
+  });
+});
