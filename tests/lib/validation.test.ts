@@ -59,6 +59,20 @@ describe("validation schemas", () => {
     expect(result.siteName).toBeNull();
   });
 
+  it("rejects malformed nullable URLs through zod parsing", () => {
+    const result = upsertItemSchema.safeParse({
+      url: "https://example.com/a",
+      title: "Example title",
+      sourceType: "other",
+      authorName: "민수",
+      entryDate: "2026-07-01",
+      password: "secret",
+      imageUrl: "not a url",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("normalizes list params", () => {
     expect(
       itemListParamsSchema.parse({

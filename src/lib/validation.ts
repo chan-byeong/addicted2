@@ -34,7 +34,7 @@ const nullableUrlSchema = z.preprocess((value) => {
 
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return trimmed === "" ? null : new URL(trimmed).toString();
+    return trimmed === "" ? null : trimmed;
   }
 
   return value;
