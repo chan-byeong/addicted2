@@ -39,6 +39,26 @@ describe("validation schemas", () => {
     ).toBe("https://example.com/");
   });
 
+  it("normalizes nullable fields to null when omitted or blank", () => {
+    const result = upsertItemSchema.parse({
+      url: "https://example.com/a",
+      title: "Example title",
+      sourceType: "other",
+      authorName: "민수",
+      entryDate: "2026-07-01",
+      password: "secret",
+      description: "   ",
+      note: null,
+      imageUrl: "   ",
+      siteName: undefined,
+    });
+
+    expect(result.description).toBeNull();
+    expect(result.note).toBeNull();
+    expect(result.imageUrl).toBeNull();
+    expect(result.siteName).toBeNull();
+  });
+
   it("normalizes list params", () => {
     expect(
       itemListParamsSchema.parse({

@@ -12,19 +12,36 @@ const normalizedUrlSchema = z
   .url()
   .transform((value) => new URL(value).toString());
 
-const nullableTextSchema = z
-  .string()
-  .trim()
-  .max(500)
-  .optional()
-  .nullable()
-  .transform((value) => {
-    if (value === undefined || value === null || value === "") {
+function nullableTrimmedStringSchema(maxLength: number) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null) {
       return null;
     }
 
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed === "" ? null : trimmed;
+    }
+
     return value;
-  });
+  }, z.union([z.string().max(maxLength), z.null()]));
+}
+
+const nullableUrlSchema = z.preprocess((value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed === "" ? null : new URL(trimmed).toString();
+  }
+
+  return value;
+}, z.union([normalizedUrlSchema, z.null()]));
+
+const nullableTextSchema = nullableTrimmedStringSchema(500);
+const nullableSiteNameSchema = nullableTrimmedStringSchema(120);
 
 export const metadataRequestSchema = z.object({
   url: normalizedUrlSchema,
@@ -34,14 +51,8 @@ export const upsertItemSchema = z.object({
   url: normalizedUrlSchema,
   title: z.string().trim().min(1).max(180),
   description: nullableTextSchema,
-  imageUrl: z
-    .string()
-    .trim()
-    .url()
-    .transform((value) => new URL(value).toString())
-    .optional()
-    .nullable(),
-  siteName: z.string().trim().max(120).optional().nullable(),
+  imageUrl: nullableUrlSchema,
+  siteName: nullableSiteNameSchema,
   sourceType: z.enum(SOURCE_TYPES),
   note: nullableTextSchema,
   authorName: z.string().trim().min(1).max(40),
