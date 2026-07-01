@@ -424,7 +424,7 @@ Run:
 
 ```bash
 pnpm lint
-pnpm test -- --passWithNoTests
+pnpm test --passWithNoTests
 pnpm build
 ```
 
