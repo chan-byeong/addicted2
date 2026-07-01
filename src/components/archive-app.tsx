@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DateNav } from "@/components/date-nav";
 import { FilterBar } from "@/components/filter-bar";
+import { ItemFormDialog } from "@/components/item-form-dialog";
 import { LinkCard } from "@/components/link-card";
 import { RecentLinks } from "@/components/recent-links";
-import { fetchItems } from "@/lib/api-client";
+import { deleteItem, fetchItems } from "@/lib/api-client";
 import { getTodayKey } from "@/lib/date";
 import type { ArchiveItem, SourceType } from "@/types/archive";
 
@@ -18,6 +19,8 @@ export function ArchiveApp() {
   const [recentItems, setRecentItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ArchiveItem | null>(null);
 
   const listParams = useMemo(
     () => ({ date, query, sourceType, limit: 50 }),
@@ -58,6 +61,10 @@ export function ArchiveApp() {
     };
   }, [loadItems]);
 
+  const refreshItems = useCallback(async () => {
+    await loadItems(() => true);
+  }, [loadItems]);
+
   return (
     <main className="page-shell">
       <header className="site-header">
@@ -65,7 +72,14 @@ export function ArchiveApp() {
           <h1>단톡 링크 아카이브</h1>
           <p>오늘 본 재밌고 유익한 링크를 날짜별로 모읍니다.</p>
         </div>
-        <button type="button" className="primary-button">
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => {
+            setEditingItem(null);
+            setIsDialogOpen(true);
+          }}
+        >
           등록
         </button>
       </header>
@@ -88,12 +102,46 @@ export function ArchiveApp() {
         ) : null}
         <div className="link-list">
           {items.map((item) => (
-            <LinkCard key={item.id} item={item} />
+            <LinkCard
+              key={item.id}
+              item={item}
+              onEdit={(nextItem) => {
+                setEditingItem(nextItem);
+                setIsDialogOpen(true);
+              }}
+              onDelete={async (nextItem) => {
+                const password = window.prompt("공용 비밀번호를 입력하세요.");
+                if (!password) return;
+
+                if (!window.confirm("이 링크를 삭제할까요?")) return;
+
+                try {
+                  await deleteItem(nextItem.id, password);
+                  await refreshItems();
+                } catch (error) {
+                  setMessage(
+                    error instanceof Error ? error.message : "삭제하지 못했습니다.",
+                  );
+                }
+              }}
+            />
           ))}
         </div>
       </section>
 
       <RecentLinks items={recentItems} />
+
+      {isDialogOpen ? (
+        <ItemFormDialog
+          key={editingItem ? `edit-${editingItem.id}` : `create-${date}`}
+          mode={editingItem ? "edit" : "create"}
+          item={editingItem}
+          date={date}
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          onSaved={refreshItems}
+        />
+      ) : null}
     </main>
   );
 }

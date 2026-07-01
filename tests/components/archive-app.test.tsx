@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ArchiveApp } from "@/components/archive-app";
@@ -50,5 +51,38 @@ describe("ArchiveApp", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Example title").length).toBeGreaterThan(0);
     });
+  });
+
+  it("opens the create dialog and preserves manual title fallback", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      const href = String(url);
+
+      if (href === "/api/items/metadata") {
+        return Response.json({
+          ok: false,
+          url: "https://blocked.example.com/",
+          sourceType: "other",
+          message: "blocked",
+        });
+      }
+
+      if (href === "/api/items" && init?.method === "POST") {
+        return Response.json({ item }, { status: 201 });
+      }
+
+      return Response.json({ items: [item] });
+    });
+
+    render(<ArchiveApp />);
+    await user.click(screen.getByRole("button", { name: "등록" }));
+    await user.type(screen.getByLabelText("URL"), "https://blocked.example.com");
+    await user.click(screen.getByRole("button", { name: "미리보기 가져오기" }));
+
+    expect(
+      await screen.findByText(
+        "미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.",
+      ),
+    ).toBeInTheDocument();
   });
 });
