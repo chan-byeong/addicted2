@@ -3,6 +3,10 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 
+import { Button } from "@/components/retroui/Button";
+import { Dialog } from "@/components/retroui/Dialog";
+import { Input } from "@/components/retroui/Input";
+import { Textarea } from "@/components/retroui/Textarea";
 import { createItem, fetchMetadata, updateItem } from "@/lib/api-client";
 import { getTodayKey } from "@/lib/date";
 import { detectSourceType } from "@/lib/source-type";
@@ -64,6 +68,15 @@ function createInitialForm(
   };
 }
 
+function getFallbackTitle(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return rawUrl;
+  }
+}
+
 export function ItemFormDialog({
   mode,
   item,
@@ -74,7 +87,6 @@ export function ItemFormDialog({
 }: ItemFormDialogProps) {
   const [form, setForm] = useState(() => createInitialForm(mode, item, date));
   const [message, setMessage] = useState<string | null>(null);
-  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) {
@@ -85,63 +97,53 @@ export function ItemFormDialog({
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  async function handleFetchMetadata() {
-    setMessage(null);
-    setIsFetchingMetadata(true);
-
-    try {
-      const metadata = await fetchMetadata(form.url);
-
-      if (!metadata.ok) {
-        setForm((current) => ({
-          ...current,
-          sourceType: metadata.sourceType || detectSourceType(current.url),
-        }));
-        setMessage("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.");
-        return;
-      }
-
-      setForm((current) => ({
-        ...current,
-        url: metadata.url,
-        title: metadata.title || current.title,
-        description: metadata.description || "",
-        imageUrl: metadata.imageUrl || "",
-        siteName: metadata.siteName || "",
-        sourceType: metadata.sourceType,
-      }));
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "미리보기를 가져오지 못했습니다.",
-      );
-    } finally {
-      setIsFetchingMetadata(false);
-    }
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     setIsSubmitting(true);
 
     try {
+      let metadata: Awaited<ReturnType<typeof fetchMetadata>> | null = null;
+
+      try {
+        metadata = await fetchMetadata(form.url);
+      } catch {
+        metadata = null;
+      }
+
+      const normalizedUrl = metadata?.url || form.url;
+      const title =
+        metadata?.ok && metadata.title
+          ? metadata.title
+          : form.title || getFallbackTitle(normalizedUrl);
+
       const input = {
-        url: form.url,
-        title: form.title,
-        description: form.description || null,
-        imageUrl: form.imageUrl || null,
-        siteName: form.siteName || null,
-        sourceType: form.sourceType,
+        url: normalizedUrl,
+        title,
+        description:
+          metadata?.ok && metadata.description
+            ? metadata.description
+            : form.description || null,
+        imageUrl:
+          metadata?.ok && metadata.imageUrl ? metadata.imageUrl : form.imageUrl || null,
+        siteName:
+          metadata?.ok && metadata.siteName ? metadata.siteName : form.siteName || null,
+        sourceType: metadata?.sourceType || form.sourceType || detectSourceType(form.url),
         note: form.note || null,
-        authorName: form.authorName,
+        authorName: form.authorName || "익명",
         entryDate: form.entryDate,
-        password: form.password,
       };
 
       if (mode === "edit" && item) {
-        await updateItem(item.id, input);
+        const password =
+          form.password || window.prompt("공용 비밀번호를 입력하세요.")?.trim();
+
+        if (!password) {
+          setMessage("공용 비밀번호가 필요합니다.");
+          return;
+        }
+
+        await updateItem(item.id, { ...input, password });
       } else {
         await createItem(input);
       }
@@ -156,117 +158,63 @@ export function ItemFormDialog({
   }
 
   return (
-    <div className="dialog-backdrop" role="presentation">
-      <section
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog.Content
+        size="screen"
         className="dialog"
-        role="dialog"
-        aria-modal="true"
         aria-label={mode === "edit" ? "링크 수정" : "링크 등록"}
       >
         <form onSubmit={handleSubmit}>
           <header className="dialog-header">
-            <h2>{mode === "edit" ? "링크 수정" : "링크 등록"}</h2>
-            <button type="button" onClick={onClose}>
+            <Dialog.Title className="dialog-title">
+              {mode === "edit" ? "링크 수정" : "링크 등록"}
+            </Dialog.Title>
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               닫기
-            </button>
+            </Button>
           </header>
 
           {message ? <p className="status-message error">{message}</p> : null}
 
           <label>
             URL
-            <input
+            <Input
               required
               type="url"
+              placeholder="https://"
               value={form.url}
               onChange={(event) => updateField("url", event.target.value)}
             />
           </label>
 
-          <button
-            type="button"
-            onClick={handleFetchMetadata}
-            disabled={!form.url || isFetchingMetadata}
-          >
-            {isFetchingMetadata ? "가져오는 중" : "미리보기 가져오기"}
-          </button>
-
-          <label>
-            제목
-            <input
-              required
-              value={form.title}
-              onChange={(event) => updateField("title", event.target.value)}
-            />
-          </label>
-
-          <label>
-            닉네임
-            <input
-              required
-              value={form.authorName}
-              onChange={(event) => updateField("authorName", event.target.value)}
-            />
-          </label>
-
-          <label>
-            타입
-            <select
-              value={form.sourceType}
-              onChange={(event) =>
-                updateField("sourceType", event.target.value as SourceType)
-              }
-            >
-              <option value="youtube">유튜브</option>
-              <option value="shorts">쇼츠</option>
-              <option value="community">커뮤니티</option>
-              <option value="other">기타</option>
-            </select>
-          </label>
-
-          <label>
-            기준 날짜
-            <input
-              required
-              type="date"
-              value={form.entryDate}
-              onChange={(event) => updateField("entryDate", event.target.value)}
-            />
-          </label>
-
           <label>
             메모
-            <textarea
+            <Textarea
+              placeholder="메모를 입력하세요 (선택)"
               rows={3}
               value={form.note}
               onChange={(event) => updateField("note", event.target.value)}
             />
           </label>
 
-          <label>
-            공용 비밀번호
-            <input
-              required
-              type="password"
-              value={form.password}
-              onChange={(event) => updateField("password", event.target.value)}
-            />
-          </label>
-
           <footer className="dialog-actions">
-            <button type="button" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               취소
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="primary-button"
               disabled={isSubmitting}
             >
               {isSubmitting ? "저장 중" : "저장"}
-            </button>
+            </Button>
           </footer>
         </form>
-      </section>
-    </div>
+      </Dialog.Content>
+    </Dialog>
   );
 }

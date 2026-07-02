@@ -4,9 +4,7 @@ import {
   createArchiveItem,
   listArchiveItems,
 } from "@/lib/archive-repository";
-import { getServerEnv } from "@/lib/env";
-import { verifyWritePassword } from "@/lib/password";
-import { itemListParamsSchema, upsertItemSchema } from "@/lib/validation";
+import { createItemSchema, itemListParamsSchema } from "@/lib/validation";
 
 function toRequestParams(request: Request) {
   const url = new URL(request.url);
@@ -36,15 +34,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const input = upsertItemSchema.parse(body);
-    const env = getServerEnv();
-
-    if (!verifyWritePassword(input.password, env.archiveWritePassword)) {
-      return NextResponse.json(
-        { message: "비밀번호가 올바르지 않습니다." },
-        { status: 401 },
-      );
-    }
+    const input = createItemSchema.parse(body);
 
     const item = await createArchiveItem({
       url: input.url,

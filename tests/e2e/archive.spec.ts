@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { getTodayKey } from "../../src/lib/date";
+
 type MockArchiveItem = {
   id: string;
   url: string;
@@ -15,7 +17,7 @@ type MockArchiveItem = {
   updatedAt: string;
 };
 
-const today = "2026-07-01";
+const today = getTodayKey();
 
 const baseItem: MockArchiveItem = {
   id: "item-1",
@@ -88,17 +90,7 @@ async function mockArchiveApi(page: Page, items: MockArchiveItem[]) {
         note?: string | null;
         authorName: string;
         entryDate: string;
-        password: string;
       };
-
-      if (body.password !== "shared-pass") {
-        await route.fulfill({
-          status: 401,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "공용 비밀번호가 올바르지 않습니다." }),
-        });
-        return;
-      }
 
       const item: MockArchiveItem = {
         id: `item-${items.length + 1}`,
@@ -134,7 +126,7 @@ test("shows the date journal, filters, and recent links on mobile", async ({
 
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "단톡 링크 아카이브" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Addicted2" })).toBeVisible();
   await expect(page.getByRole("heading", { name: `${today} 링크` })).toBeVisible();
   const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
   await expect(
@@ -147,31 +139,29 @@ test("shows the date journal, filters, and recent links on mobile", async ({
   await expect(page.getByText("이 날짜에 등록된 링크가 없습니다.")).toBeVisible();
 });
 
-test("creates a link after metadata fallback and shared password entry", async ({
+test("creates a link after metadata fallback without a shared password prompt", async ({
   page,
 }) => {
   const items: MockArchiveItem[] = [];
   await mockArchiveApi(page, items);
+  let prompted = false;
+  page.on("dialog", async (dialog) => {
+    prompted = true;
+    await dialog.dismiss();
+  });
 
   await page.goto("/");
   await page.getByRole("button", { name: "등록" }).click();
 
   await page.getByLabel("URL").fill("https://www.youtube.com/shorts/demo");
-  await page.getByRole("button", { name: "미리보기 가져오기" }).click();
-  await expect(
-    page.getByText("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요."),
-  ).toBeVisible();
-
-  await page.getByLabel("제목").fill("웃긴 쇼츠 모음");
-  await page.getByLabel("닉네임").fill("병");
   await page.getByLabel("메모").fill("점심시간에 봄");
-  await page.getByLabel("공용 비밀번호").fill("shared-pass");
   await page.getByRole("button", { name: "저장" }).click();
 
   await expect(page.getByRole("dialog")).toBeHidden();
+  expect(prompted).toBe(false);
   const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
   await expect(
-    dailyLinks.getByRole("link", { name: "웃긴 쇼츠 모음" }),
+    dailyLinks.getByRole("link", { name: "youtube.com" }),
   ).toBeVisible();
   await expect(dailyLinks.getByText("점심시간에 봄")).toBeVisible();
 });

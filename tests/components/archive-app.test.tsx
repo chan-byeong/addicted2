@@ -43,8 +43,12 @@ describe("ArchiveApp", () => {
     render(<ArchiveApp />);
 
     expect(
-      screen.getByRole("heading", { name: "단톡 링크 아카이브" }),
+      screen.getByRole("heading", { name: "Addicted2" }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("brand-annotation")).toHaveTextContent(
+      "Addicted2",
+    );
+    expect(screen.getByTestId("date-annotation")).toBeInTheDocument();
     expect(screen.getByLabelText("검색어")).toBeInTheDocument();
     expect(screen.getByLabelText("타입 필터")).toBeInTheDocument();
 
@@ -53,36 +57,18 @@ describe("ArchiveApp", () => {
     });
   });
 
-  it("opens the create dialog and preserves manual title fallback", async () => {
+  it("opens the create dialog with only URL and note fields", async () => {
     const user = userEvent.setup();
-    vi.mocked(fetch).mockImplementation(async (url, init) => {
-      const href = String(url);
-
-      if (href === "/api/items/metadata") {
-        return Response.json({
-          ok: false,
-          url: "https://blocked.example.com/",
-          sourceType: "other",
-          message: "blocked",
-        });
-      }
-
-      if (href === "/api/items" && init?.method === "POST") {
-        return Response.json({ item }, { status: 201 });
-      }
-
-      return Response.json({ items: [item] });
-    });
 
     render(<ArchiveApp />);
     await user.click(screen.getByRole("button", { name: "등록" }));
-    await user.type(screen.getByLabelText("URL"), "https://blocked.example.com");
-    await user.click(screen.getByRole("button", { name: "미리보기 가져오기" }));
 
-    expect(
-      await screen.findByText(
-        "미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("URL")).toBeInTheDocument();
+    expect(screen.getByLabelText("메모")).toBeInTheDocument();
+    expect(screen.queryByLabelText("제목")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("닉네임")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("타입")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("기준 날짜")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("공용 비밀번호")).not.toBeInTheDocument();
   });
 });

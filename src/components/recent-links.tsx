@@ -7,7 +7,10 @@ type RecentLinksProps = {
 
 export function RecentLinks({ items }: RecentLinksProps) {
   return (
-    <section className="section-block" aria-labelledby="recent-links-title">
+    <section
+      className="section-block recent-block"
+      aria-labelledby="recent-links-title"
+    >
       <h2 id="recent-links-title">최근 링크</h2>
       <div className="link-list compact">
         {items.length ? (

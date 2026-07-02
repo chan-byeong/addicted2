@@ -52,7 +52,7 @@ describe("/api/items routes", () => {
     });
   });
 
-  it("creates an item when the shared password is correct", async () => {
+  it("creates an item without a shared password", async () => {
     const repo = await import("@/lib/archive-repository");
     vi.mocked(repo.createArchiveItem).mockResolvedValue(exampleItem);
 
@@ -66,7 +66,6 @@ describe("/api/items routes", () => {
           sourceType: "other",
           authorName: "민수",
           entryDate: "2026-07-01",
-          password: "secret",
         }),
       }),
     );
@@ -86,7 +85,10 @@ describe("/api/items routes", () => {
     });
   });
 
-  it("rejects create requests with a wrong password", async () => {
+  it("does not validate shared password values on create requests", async () => {
+    const repo = await import("@/lib/archive-repository");
+    vi.mocked(repo.createArchiveItem).mockResolvedValue(exampleItem);
+
     const { POST } = await import("@/app/api/items/route");
     const response = await POST(
       new Request("http://localhost/api/items", {
@@ -102,10 +104,8 @@ describe("/api/items routes", () => {
       }),
     );
 
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({
-      message: "비밀번호가 올바르지 않습니다.",
-    });
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({ item: exampleItem });
   });
 
   it("updates an item with the shared password", async () => {

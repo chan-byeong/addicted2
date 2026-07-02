@@ -11,11 +11,21 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@fontsource/pretendard": "^5.2.5",
     "@supabase/supabase-js": "^2.110.0",
+    "@tailwindcss/postcss": "^4.3.2",
     "cheerio": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
     "next": "^16.2.9",
+    "postcss": "^8.5.16",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "rough-notation": "^0.5.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

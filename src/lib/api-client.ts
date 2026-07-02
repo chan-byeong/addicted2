@@ -61,7 +61,7 @@ export async function fetchMetadata(url: string) {
   );
 }
 
-export async function createItem(input: ArchiveItemInput & { password: string }) {
+export async function createItem(input: ArchiveItemInput) {
   const data = await parseJsonResponse<{ item: ArchiveItem }>(
     await fetch("/api/items", {
       method: "POST",

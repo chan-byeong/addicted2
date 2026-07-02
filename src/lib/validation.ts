@@ -47,7 +47,7 @@ export const metadataRequestSchema = z.object({
   url: normalizedUrlSchema,
 });
 
-export const upsertItemSchema = z.object({
+const itemPayloadSchema = z.object({
   url: normalizedUrlSchema,
   title: z.string().trim().min(1).max(180),
   description: nullableTextSchema,
@@ -57,6 +57,11 @@ export const upsertItemSchema = z.object({
   note: nullableTextSchema,
   authorName: z.string().trim().min(1).max(40),
   entryDate: dateKeySchema,
+});
+
+export const createItemSchema = itemPayloadSchema;
+
+export const upsertItemSchema = itemPayloadSchema.extend({
   password: z.string().min(1),
 });
 

@@ -1,3 +1,5 @@
+import { Input } from "@/components/retroui/Input";
+import { Select } from "@/components/retroui/Select";
 import { SOURCE_TYPES, type SourceType } from "@/types/archive";
 
 type FilterBarProps = {
@@ -23,25 +25,32 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <section className="filter-bar" aria-label="링크 필터">
-      <input
+      <Input
         aria-label="검색어"
+        placeholder="뭐 찾음?"
         type="search"
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
       />
-      <select
-        aria-label="타입 필터"
+      <Select
         value={sourceType}
-        onChange={(event) =>
-          onSourceTypeChange(event.target.value as SourceType | "all")
+        onValueChange={(value) =>
+          onSourceTypeChange(value as SourceType | "all")
         }
       >
-        {(["all", ...SOURCE_TYPES] as const).map((type) => (
-          <option key={type} value={type}>
-            {LABELS[type]}
-          </option>
-        ))}
-      </select>
+        <Select.Trigger aria-label="타입 필터" className="w-full">
+          <Select.Value>{LABELS[sourceType]}</Select.Value>
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Group>
+            {(["all", ...SOURCE_TYPES] as const).map((type) => (
+              <Select.Item key={type} value={type}>
+                {LABELS[type]}
+              </Select.Item>
+            ))}
+          </Select.Group>
+        </Select.Content>
+      </Select>
     </section>
   );
 }

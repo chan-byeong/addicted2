@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  createItemSchema,
   itemListParamsSchema,
   metadataRequestSchema,
   upsertItemSchema,
 } from "@/lib/validation";
 
 describe("validation schemas", () => {
+  it("parses create item input without a password", () => {
+    const result = createItemSchema.parse({
+      url: "https://example.com/a",
+      title: "Example title",
+      sourceType: "other",
+      authorName: "민수",
+      entryDate: "2026-07-01",
+    });
+
+    expect(result.title).toBe("Example title");
+    expect(result.url).toBe("https://example.com/a");
+  });
+
   it("parses valid item input", () => {
     const result = upsertItemSchema.parse({
       url: "https://example.com/a",

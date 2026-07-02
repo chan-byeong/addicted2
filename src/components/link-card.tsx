@@ -1,9 +1,20 @@
-import type { ArchiveItem } from "@/types/archive";
+import { RoughAnnotation } from '@/components/rough-annotation';
+import { Button } from '@/components/retroui/Button';
+import { Card } from '@/components/retroui/Card';
+import type { ArchiveItem } from '@/types/archive';
 
 type LinkCardProps = {
   item: ArchiveItem;
+  emphasizeTitle?: boolean;
   onEdit?: (item: ArchiveItem) => void;
   onDelete?: (item: ArchiveItem) => void;
+};
+
+const SOURCE_LABELS: Record<ArchiveItem['sourceType'], string> = {
+  youtube: '유튜브',
+  shorts: '쇼츠',
+  community: '커뮤니티',
+  other: '기타',
 };
 
 function getHostname(url: string) {
@@ -14,52 +25,42 @@ function getHostname(url: string) {
   }
 }
 
-export function LinkCard({ item, onEdit, onDelete }: LinkCardProps) {
-  const createdAt = new Date(item.createdAt).toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
+export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: LinkCardProps) {
+  const createdAt = new Date(item.createdAt).toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
   return (
-    <article className="link-card">
+    <Card className='link-card' role='article'>
       {item.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt="" className="link-card__thumb" />
-      ) : null}
-      <div className="link-card__body">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noreferrer"
-          className="link-title"
-        >
-          {item.title}
+        <img src={item.imageUrl} alt='' className='link-card__thumb' />
+      ) : (
+        <div className='link-card__glyph' aria-hidden='true'>
+          <svg viewBox='0 0 72 72'>
+            <path d='M18 42c0-13 7-24 19-25 11-1 18 8 17 20-1 15-10 22-22 20-9-1-14-7-14-15Z' />
+            <path d='M31 32c5-3 10-3 15 0M28 43c6 6 16 7 23 0' />
+          </svg>
+        </div>
+      )}
+      <div className='link-card__body'>
+        <a href={item.url} target='_blank' rel='noreferrer' className='link-title'>
+          {emphasizeTitle ? (
+            <RoughAnnotation type='underline'>{item.title}</RoughAnnotation>
+          ) : (
+            item.title
+          )}
         </a>
-        <div className="link-meta">
+        <div className='link-meta'>
           <span>{item.siteName || getHostname(item.url)}</span>
-          <span>{item.sourceType}</span>
+          <span>{SOURCE_LABELS[item.sourceType]}</span>
           <span>{item.authorName}</span>
           <span>{createdAt}</span>
         </div>
         {item.description ? <p>{item.description}</p> : null}
-        {item.note ? <p className="link-note">{item.note}</p> : null}
-        <div className="link-actions">
-          {onEdit ? (
-            <button type="button" onClick={() => onEdit(item)}>
-              수정
-            </button>
-          ) : null}
-          {onDelete ? (
-            <button
-              type="button"
-              className="danger"
-              onClick={() => onDelete(item)}
-            >
-              삭제
-            </button>
-          ) : null}
-        </div>
+        {item.note ? <p className='link-note'>{item.note}</p> : null}
       </div>
-    </article>
+    </Card>
   );
 }
