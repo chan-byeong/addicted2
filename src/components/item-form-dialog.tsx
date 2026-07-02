@@ -79,6 +79,15 @@ function getFallbackTitle(rawUrl: string) {
   }
 }
 
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function ItemFormDialog({
   mode,
   item,
@@ -91,6 +100,9 @@ export function ItemFormDialog({
   const [form, setForm] = useState(() => createInitialForm(mode, item, date));
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [metadataFailed, setMetadataFailed] = useState(false);
+  const [hasPreview, setHasPreview] = useState(false);
 
   if (!isOpen) {
     return null;
@@ -100,52 +112,121 @@ export function ItemFormDialog({
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  async function loadMetadata(rawUrl: string) {
+    const url = rawUrl.trim();
+
+    if (!isValidHttpUrl(url)) {
+      return null;
+    }
+
+    return queryClient.fetchQuery({
+      queryKey: archiveQueryKeys.metadata(url),
+      queryFn: () => fetchMetadata(url),
+      staleTime: 24 * 60 * 60 * 1000,
+      gcTime: 7 * 24 * 60 * 60 * 1000,
+    });
+  }
+
+  async function handleFetchMetadata() {
+    const url = form.url.trim();
+
+    if (!isValidHttpUrl(url)) {
+      return;
+    }
+
+    setMessage(null);
+    setIsFetchingMetadata(true);
+    setMetadataFailed(false);
+    setHasPreview(false);
+
+    try {
+      const metadata = await loadMetadata(url);
+
+      if (!metadata?.ok) {
+        setMetadataFailed(true);
+        setForm((current) => ({
+          ...current,
+          sourceType: metadata?.sourceType || detectSourceType(current.url),
+        }));
+        setMessage("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.");
+        return;
+      }
+
+      setForm((current) => ({
+        ...current,
+        url: metadata.url,
+        title: metadata.title || current.title,
+        description: metadata.description || "",
+        imageUrl: metadata.imageUrl || "",
+        siteName: metadata.siteName || "",
+        sourceType: metadata.sourceType,
+      }));
+      setHasPreview(true);
+    } catch {
+      setMetadataFailed(true);
+      setForm((current) => ({
+        ...current,
+        sourceType: detectSourceType(current.url),
+      }));
+      setMessage("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.");
+    } finally {
+      setIsFetchingMetadata(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     setIsSubmitting(true);
 
     try {
-      let metadata: Awaited<ReturnType<typeof fetchMetadata>> | null = null;
       const url = form.url.trim();
+      let nextForm = form;
 
-      try {
-        metadata = await queryClient.fetchQuery({
-          queryKey: archiveQueryKeys.metadata(url),
-          queryFn: () => fetchMetadata(url),
-          staleTime: 24 * 60 * 60 * 1000,
-          gcTime: 7 * 24 * 60 * 60 * 1000,
-        });
-      } catch {
-        metadata = null;
+      if (isValidHttpUrl(url) && !form.title.trim()) {
+        try {
+          const metadata = await loadMetadata(url);
+
+          if (metadata?.ok) {
+            nextForm = {
+              ...form,
+              url: metadata.url,
+              title: metadata.title || form.title,
+              description: metadata.description || form.description,
+              imageUrl: metadata.imageUrl || form.imageUrl,
+              siteName: metadata.siteName || form.siteName,
+              sourceType: metadata.sourceType,
+            };
+          } else {
+            setMetadataFailed(true);
+            setMessage("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.");
+            return;
+          }
+        } catch {
+          setMetadataFailed(true);
+          setMessage("미리보기를 가져오지 못했습니다. 제목을 직접 입력해 주세요.");
+          return;
+        }
       }
 
-      const normalizedUrl = metadata?.url || form.url;
-      const title =
-        metadata?.ok && metadata.title
-          ? metadata.title
-          : form.title || getFallbackTitle(normalizedUrl);
+      const normalizedUrl = nextForm.url.trim();
+      const title = nextForm.title.trim() || getFallbackTitle(normalizedUrl);
 
       const input = {
         url: normalizedUrl,
         title,
-        description:
-          metadata?.ok && metadata.description
-            ? metadata.description
-            : form.description || null,
-        imageUrl:
-          metadata?.ok && metadata.imageUrl ? metadata.imageUrl : form.imageUrl || null,
-        siteName:
-          metadata?.ok && metadata.siteName ? metadata.siteName : form.siteName || null,
-        sourceType: metadata?.sourceType || form.sourceType || detectSourceType(form.url),
-        note: form.note || null,
-        authorName: form.authorName || "익명",
-        entryDate: form.entryDate,
+        description: nextForm.description.trim() || null,
+        imageUrl: nextForm.imageUrl.trim() || null,
+        siteName: nextForm.siteName.trim() || null,
+        sourceType: nextForm.sourceType || detectSourceType(normalizedUrl),
+        note: nextForm.note.trim() || null,
+        authorName: nextForm.authorName.trim() || "익명",
+        entryDate: nextForm.entryDate,
       };
 
       if (mode === "edit" && item) {
         const password =
-          form.password || window.prompt("공용 비밀번호를 입력하세요.")?.trim();
+          nextForm.password || window.prompt("공용 비밀번호를 입력하세요.")?.trim();
 
         if (!password) {
           setMessage("공용 비밀번호가 필요합니다.");
@@ -197,9 +278,48 @@ export function ItemFormDialog({
               type="url"
               placeholder="https://"
               value={form.url}
-              onChange={(event) => updateField("url", event.target.value)}
+              onChange={(event) => {
+                updateField("url", event.target.value);
+                setMetadataFailed(false);
+                setHasPreview(false);
+              }}
+              onBlur={() => {
+                void handleFetchMetadata();
+              }}
             />
           </label>
+
+          {isFetchingMetadata ? (
+            <p className="status-message">미리보기를 불러오는 중입니다.</p>
+          ) : null}
+
+          {hasPreview ? (
+            <div className="metadata-preview" aria-label="링크 미리보기">
+              {form.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.imageUrl} alt="" className="metadata-preview__thumb" />
+              ) : (
+                <div className="metadata-preview__glyph" aria-hidden="true" />
+              )}
+              <div className="metadata-preview__body">
+                <strong>{form.title}</strong>
+                {form.description ? <p>{form.description}</p> : null}
+                <span>{form.siteName || getFallbackTitle(form.url)}</span>
+              </div>
+            </div>
+          ) : null}
+
+          {metadataFailed ? (
+            <label>
+              제목
+              <Input
+                required
+                placeholder="링크 제목"
+                value={form.title}
+                onChange={(event) => updateField("title", event.target.value)}
+              />
+            </label>
+          ) : null}
 
           <label>
             메모
@@ -215,10 +335,7 @@ export function ItemFormDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting || isFetchingMetadata}>
               {isSubmitting ? "저장 중" : "저장"}
             </Button>
           </footer>

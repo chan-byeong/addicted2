@@ -76,6 +76,55 @@ function getStringField(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function normalizeHostname(hostname: string) {
+  return hostname.replace(/^www\./, "");
+}
+
+function normalizeTitle(title: string, sourceType: SourceType) {
+  if (sourceType === "community" && title.includes(" - ")) {
+    return title.split(" - ")[0].trim();
+  }
+
+  return title;
+}
+
+function isFmkoreaHost(hostname: string) {
+  const normalized = normalizeHostname(hostname);
+  return normalized === "fmkorea.com" || normalized.endsWith(".fmkorea.com");
+}
+
+function extractCommunityFallback(
+  $: cheerio.CheerioAPI,
+  url: string,
+  sourceType: SourceType,
+) {
+  if (sourceType !== "community") {
+    return { title: null as string | null, imageUrl: null as string | null };
+  }
+
+  const hostname = normalizeHostname(new URL(url).hostname);
+
+  if (!isFmkoreaHost(hostname)) {
+    return { title: null, imageUrl: null };
+  }
+
+  const title =
+    $(".np_18px_span").first().text().trim() ||
+    $("h1.np_18px").first().text().trim() ||
+    null;
+
+  const imageUrl = absolutizeUrl($("article img").first().attr("src") ?? null, url);
+
+  return { title: title || null, imageUrl };
+}
+
+const HTML_FETCH_HEADERS = {
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+  "user-agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+};
+
 async function fetchYouTubeOEmbedMetadata(
   url: string,
   sourceType: SourceType,
@@ -129,11 +178,8 @@ async function fetchHtmlMetadata(
 
   try {
     const response = await fetch(url, {
-      headers: {
-        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "user-agent":
-          "Mozilla/5.0 (compatible; CommunityLinkArchive/1.0; +https://example.com)",
-      },
+      headers: HTML_FETCH_HEADERS,
+      redirect: "follow",
       signal,
     });
 
@@ -163,27 +209,47 @@ async function fetchHtmlMetadata(
     const html = await response.text();
     const $ = cheerio.load(html);
     const hostname = new URL(url).hostname;
-    const title =
+    const normalizedHostname = normalizeHostname(hostname);
+    const rawTitle =
       firstContent($, [
         'meta[property="og:title"]',
         'meta[name="twitter:title"]',
+        'meta[property="twitter:title"]',
         "title",
-      ]) ?? hostname;
+      ]) ?? normalizedHostname;
+    let title = normalizeTitle(rawTitle, sourceType);
     const description = firstContent($, [
       'meta[property="og:description"]',
       'meta[name="twitter:description"]',
+      'meta[property="twitter:description"]',
       'meta[name="description"]',
     ]);
-    const imageUrl = absolutizeUrl(
+    let imageUrl = absolutizeUrl(
       firstContent($, [
         'meta[property="og:image"]',
         'meta[property="og:image:url"]',
         'meta[name="twitter:image"]',
+        'meta[property="twitter:image"]',
         'meta[name="twitter:image:src"]',
       ]),
       url,
     );
-    const siteName = firstContent($, ['meta[property="og:site_name"]']) ?? hostname;
+    const siteName = firstContent($, ['meta[property="og:site_name"]']) ?? normalizedHostname;
+
+    if (
+      sourceType === "community" &&
+      (title === normalizedHostname || !imageUrl)
+    ) {
+      const fallback = extractCommunityFallback($, url, sourceType);
+
+      if (title === normalizedHostname && fallback.title) {
+        title = fallback.title;
+      }
+
+      if (!imageUrl && fallback.imageUrl) {
+        imageUrl = fallback.imageUrl;
+      }
+    }
 
     return {
       ok: true,

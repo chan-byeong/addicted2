@@ -79,7 +79,7 @@ describe("ArchiveApp", () => {
     });
   });
 
-  it("opens the create dialog with only URL and note fields", async () => {
+  it("opens the create dialog with URL, note, and optional title on metadata failure", async () => {
     const user = userEvent.setup();
 
     renderArchiveApp();
@@ -92,6 +92,13 @@ describe("ArchiveApp", () => {
     expect(screen.queryByLabelText("타입")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("기준 날짜")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("공용 비밀번호")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("URL"), "https://www.youtube.com/shorts/demo");
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("제목")).toBeInTheDocument();
+    });
   });
 
   it("reuses cached metadata for repeated saves of the same URL", async () => {
@@ -163,6 +170,10 @@ describe("ArchiveApp", () => {
       await user.click(screen.getByRole("button", { name: "등록" }));
       await user.clear(screen.getByLabelText("URL"));
       await user.type(screen.getByLabelText("URL"), "https://www.youtube.com/shorts/demo");
+      await user.tab();
+      await waitFor(() => {
+        expect(screen.getByLabelText("링크 미리보기")).toBeInTheDocument();
+      });
       await user.clear(screen.getByLabelText("메모"));
       await user.type(screen.getByLabelText("메모"), note);
       await user.click(screen.getByRole("button", { name: "저장" }));
