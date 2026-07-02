@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { RoughAnnotation } from '@/components/rough-annotation';
 import { Button } from '@/components/retroui/Button';
 import { Card } from '@/components/retroui/Card';
@@ -26,6 +28,7 @@ function getHostname(url: string) {
 }
 
 export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: LinkCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const createdAt = new Date(item.createdAt).toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -33,9 +36,14 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
 
   return (
     <Card className='link-card' role='article'>
-      {item.imageUrl ? (
+      {item.imageUrl && !imageFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt='' className='link-card__thumb' />
+        <img
+          src={item.imageUrl}
+          alt=""
+          className="link-card__thumb"
+          onError={() => setImageFailed(true)}
+        />
       ) : (
         <div className='link-card__glyph' aria-hidden='true'>
           <svg viewBox='0 0 72 72'>

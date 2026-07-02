@@ -127,7 +127,7 @@ describe("fetchLinkMetadata", () => {
       title: "Short title",
       description: null,
       imageUrl: null,
-      siteName: "www.youtube.com",
+      siteName: "youtube.com",
       sourceType: "shorts",
     });
   });
@@ -295,6 +295,89 @@ describe("fetchLinkMetadata", () => {
       imageUrl: null,
       siteName: "example.com",
       sourceType: "other",
+    });
+  });
+
+  it("extracts fmkorea metadata including property twitter tags", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          `
+            <html>
+              <head>
+                <title>진자림 근황.jpg - 포텐 터짐 최신순 - 에펨코리아</title>
+                <meta property="og:title" content="진자림 근황.jpg" />
+                <meta property="og:description" content="개인방송 은퇴한다고 함" />
+                <meta property="og:site_name" content="에펨코리아" />
+                <meta property="twitter:title" content="진자림 근황.jpg" />
+                <meta property="twitter:description" content="개인방송 은퇴한다고 함" />
+                <meta property="twitter:image" content="https://image.fmkorea.com/files/attach/new5/thumb.png" />
+                <meta property="og:image" content="https://image.fmkorea.com/files/attach/new5/thumb.png" />
+              </head>
+            </html>
+          `,
+          {
+            status: 200,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          },
+        ),
+      ),
+    );
+
+    const metadata = await fetchLinkMetadata(
+      "https://www.fmkorea.com/best/10033820683",
+    );
+
+    expect(metadata).toEqual({
+      ok: true,
+      url: "https://www.fmkorea.com/best/10033820683",
+      title: "진자림 근황.jpg",
+      description: "개인방송 은퇴한다고 함",
+      imageUrl: "https://image.fmkorea.com/files/attach/new5/thumb.png",
+      siteName: "에펨코리아",
+      sourceType: "community",
+    });
+  });
+
+  it("normalizes community page titles and falls back to fmkorea article content", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          `
+            <html>
+              <head>
+                <title>진자림 근황.jpg - 포텐 터짐 최신순 - 에펨코리아</title>
+              </head>
+              <body>
+                <article>
+                  <h1 class="np_18px"><span class="np_18px_span">진자림 근황.jpg</span></h1>
+                  <img src="//image.fmkorea.com/files/attach/new5/article.jpg" />
+                </article>
+              </body>
+            </html>
+          `,
+          {
+            status: 200,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          },
+        ),
+      ),
+    );
+
+    const metadata = await fetchLinkMetadata(
+      "https://www.fmkorea.com/best/10033820683",
+    );
+
+    expect(metadata).toEqual({
+      ok: true,
+      url: "https://www.fmkorea.com/best/10033820683",
+      title: "진자림 근황.jpg",
+      description: null,
+      imageUrl: "https://image.fmkorea.com/files/attach/new5/article.jpg",
+      siteName: "fmkorea.com",
+      sourceType: "community",
     });
   });
 

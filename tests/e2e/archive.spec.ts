@@ -156,6 +156,9 @@ test("creates a link after metadata fallback without a shared password prompt", 
   await page.getByRole("button", { name: "등록" }).click();
 
   await page.getByLabel("URL").fill("https://www.youtube.com/shorts/demo");
+  await page.getByLabel("URL").blur();
+  await expect(page.getByLabel("제목")).toBeVisible();
+  await page.getByLabel("제목").fill("수동 입력 제목");
   await page.getByLabel("메모").fill("점심시간에 봄");
   await page.getByRole("button", { name: "저장" }).click();
 
@@ -163,7 +166,7 @@ test("creates a link after metadata fallback without a shared password prompt", 
   expect(prompted).toBe(false);
   const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
   await expect(
-    dailyLinks.getByRole("link", { name: "youtube.com" }),
+    dailyLinks.getByRole("link", { name: "수동 입력 제목" }),
   ).toBeVisible();
   await expect(dailyLinks.getByText("점심시간에 봄")).toBeVisible();
 });

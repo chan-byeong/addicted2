@@ -406,6 +406,53 @@ a:focus-visible {
   margin-top: 2px;
 }
 
+.metadata-preview {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--secondary);
+}
+
+.metadata-preview__thumb,
+.metadata-preview__glyph {
+  width: 48px;
+  aspect-ratio: 1;
+  border: 1.5px solid var(--border);
+  background: #fff;
+}
+
+.metadata-preview__thumb {
+  display: block;
+  object-fit: cover;
+}
+
+.metadata-preview__glyph {
+  background: var(--background);
+}
+
+.metadata-preview__body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--foreground);
+}
+
+.metadata-preview__body strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.metadata-preview__body p,
+.metadata-preview__body span {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
 .maple-page-shell {
   --maple-green: #047857;
   --maple-green-dark: #064e3b;
