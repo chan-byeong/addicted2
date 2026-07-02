@@ -10,6 +10,16 @@ export const archiveQueryKeys = {
   },
 };
 
+export const mapleQueryKeys = {
+  charactersRoot: ["maple", "characters"] as const,
+  characters() {
+    return ["maple", "characters"] as const;
+  },
+  character(ocid: string) {
+    return ["maple", "characters", ocid.trim()] as const;
+  },
+};
+
 function normalizeItemListParams(params: ItemListParams) {
   return {
     date: params.date || undefined,

@@ -71,3 +71,19 @@ export const itemListParamsSchema = z.object({
   sourceType: z.enum([...SOURCE_TYPES, "all"]).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
+
+export const mapleCharacterNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(30);
+
+export const mapleOcidSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128);
+
+export const createMapleCharacterSchema = z.object({
+  characterName: mapleCharacterNameSchema,
+});

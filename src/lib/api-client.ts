@@ -3,6 +3,10 @@ import type {
   ArchiveItemInput,
   ItemListParams,
 } from "@/types/archive";
+import type {
+  MapleCharacter,
+  MapleCharacterDetail,
+} from "@/types/maple";
 
 function buildQuery(params: ItemListParams) {
   const searchParams = new URLSearchParams();
@@ -106,4 +110,36 @@ export async function deleteItem(id: string, password: string) {
         : "링크를 삭제하지 못했습니다.",
     );
   }
+}
+
+export async function fetchMapleCharacters() {
+  const data = await parseJsonResponse<{ characters: MapleCharacter[] }>(
+    await fetch("/api/maple/characters", {
+      cache: "no-store",
+    }),
+  );
+
+  return data.characters;
+}
+
+export async function registerMapleCharacter(characterName: string) {
+  const data = await parseJsonResponse<{ character: MapleCharacter }>(
+    await fetch("/api/maple/characters", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ characterName }),
+    }),
+  );
+
+  return data.character;
+}
+
+export async function fetchMapleCharacter(ocid: string) {
+  const data = await parseJsonResponse<{ character: MapleCharacterDetail }>(
+    await fetch(`/api/maple/characters/${encodeURIComponent(ocid)}`, {
+      cache: "no-store",
+    }),
+  );
+
+  return data.character;
 }

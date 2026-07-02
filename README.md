@@ -21,6 +21,8 @@ room.
 - Source-type filtering for `youtube`, `shorts`, `community`, and `other`.
 - URL metadata fetching for title, description, thumbnail, and site name.
 - Manual title entry when metadata fetching fails.
+- Public MapleStory character registration by character name.
+- MapleStory character cards with level, class, stat, and equipment views.
 
 ## Tech stack
 
@@ -37,6 +39,7 @@ for public reads and form interactions.
 - Vitest
 - Testing Library
 - Playwright
+- NEXON Open API
 
 ## Environment variables
 
@@ -53,9 +56,14 @@ Set these values:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase public anon or publishable key.
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase server-only service role or secret key.
 - `ARCHIVE_WRITE_PASSWORD`: Shared password required for write actions.
+- `NEXON_OPEN_API_KEY`: Server-only NEXON Open API key for MapleStory data.
 
 > **Warning:** Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. Keep it
 > only in local server environment files and Vercel environment variables.
+
+`NEXON_OPEN_API_KEY` is also server-only. Maple character registration and detail
+lookups return a server configuration error locally until `.env.local` contains a
+valid NEXON Open API key.
 
 ## Database setup
 
@@ -65,6 +73,7 @@ columns.
 
 ```text
 supabase/migrations/20260701000000_create_archive_items.sql
+supabase/migrations/20260702000000_create_maple_characters.sql
 ```
 
 You can apply it through the Supabase SQL editor or a Supabase CLI workflow.
@@ -116,7 +125,8 @@ The repository is organized by product boundary.
 - `src/app`: Next.js pages, layout, styles, and API route handlers.
 - `src/components`: Archive UI components.
 - `src/lib`: Supabase, metadata, validation, password, and date helpers.
-- `src/types`: Shared archive types.
+- `src/hooks`: React Query hooks for archive and Maple client workflows.
+- `src/types`: Shared archive and Maple types.
 - `supabase/migrations`: Database schema migration.
 - `tests`: API, component, utility, and end-to-end tests.
 - `docs/superpowers`: Product design and implementation plan.

@@ -13,6 +13,7 @@ type RoughAnnotationProps = {
   children: ReactNode;
   className?: string;
   testId?: string;
+  color?: RoughAnnotationConfig['color'];
   type?: RoughAnnotationType;
   padding?: RoughAnnotationConfig['padding'];
   strokeWidth?: number;
@@ -40,6 +41,7 @@ export function RoughAnnotation({
   className,
   testId,
   type = 'underline',
+  color = '#111111',
   padding = 2,
   strokeWidth = 1.5,
   animationDuration = 650,
@@ -55,7 +57,7 @@ export function RoughAnnotation({
 
     const annotation: RoughAnnotation = annotate(target, {
       type,
-      color: '#111111',
+      color: color,
       padding,
       strokeWidth,
       animationDuration,
