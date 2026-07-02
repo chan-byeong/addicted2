@@ -1,27 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DateNav } from '@/components/date-nav';
 import { FilterBar } from '@/components/filter-bar';
 import { ItemFormDialog } from '@/components/item-form-dialog';
 import { LinkCard } from '@/components/link-card';
-import { RecentLinks } from '@/components/recent-links';
 import { RoughAnnotation } from '@/components/rough-annotation';
 import { Button } from '@/components/retroui/Button';
 import { Card } from '@/components/retroui/Card';
 import { Text } from '@/components/retroui/Text';
-import { deleteItem, fetchItems } from '@/lib/api-client';
+import { fetchItems } from '@/lib/api-client';
 import { getTodayKey } from '@/lib/date';
+import { archiveQueryKeys } from '@/lib/query-keys';
 import type { ArchiveItem, SourceType } from '@/types/archive';
 
 export function ArchiveApp() {
+  const queryClient = useQueryClient();
   const [date, setDate] = useState(() => getTodayKey());
   const [query, setQuery] = useState('');
   const [sourceType, setSourceType] = useState<SourceType | 'all'>('all');
-  const [items, setItems] = useState<ArchiveItem[]>([]);
-  const [recentItems, setRecentItems] = useState<ArchiveItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ArchiveItem | null>(null);
@@ -31,44 +30,36 @@ export function ArchiveApp() {
     [date, query, sourceType]
   );
 
-  const loadItems = useCallback(
-    async (isActive: () => boolean) => {
-      setIsLoading(true);
-      setMessage(null);
+  const recentParams = useMemo(() => ({ sourceType: 'all' as const, limit: 5 }), []);
 
-      try {
-        const [nextItems, nextRecentItems] = await Promise.all([
-          fetchItems(listParams),
-          fetchItems({ sourceType: 'all', limit: 5 }),
-        ]);
-        if (!isActive()) return;
-        setItems(nextItems);
-        setRecentItems(nextRecentItems);
-      } catch (error) {
-        if (!isActive()) return;
-        setMessage(error instanceof Error ? error.message : '목록을 불러오지 못했습니다.');
-      } finally {
-        if (isActive()) setIsLoading(false);
-      }
-    },
-    [listParams]
-  );
+  const itemsQuery = useQuery({
+    queryKey: archiveQueryKeys.items(listParams),
+    queryFn: () => fetchItems(listParams),
+  });
 
-  useEffect(() => {
-    let isActive = true;
-    const timeoutId = window.setTimeout(() => {
-      void loadItems(() => isActive);
-    }, 0);
+  const recentItemsQuery = useQuery({
+    queryKey: archiveQueryKeys.items(recentParams),
+    queryFn: () => fetchItems(recentParams),
+  });
 
-    return () => {
-      isActive = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [loadItems]);
+  const items = itemsQuery.data ?? [];
+  const recentItems = recentItemsQuery.data ?? [];
+  const isLoading = itemsQuery.isPending || recentItemsQuery.isPending;
+  const queryError = itemsQuery.error || recentItemsQuery.error;
+  const statusMessage =
+    message ||
+    (queryError instanceof Error
+      ? queryError.message
+      : queryError
+      ? '목록을 불러오지 못했습니다.'
+      : null);
 
   const refreshItems = useCallback(async () => {
-    await loadItems(() => true);
-  }, [loadItems]);
+    setMessage(null);
+    await queryClient.invalidateQueries({
+      queryKey: archiveQueryKeys.itemsRoot,
+    });
+  }, [queryClient]);
 
   return (
     <main className='page-shell'>
@@ -76,9 +67,9 @@ export function ArchiveApp() {
         <Card className='site-header__top'>
           <div className='site-header__copy'>
             <Text as='h1'>
-              <RoughAnnotation testId='brand-annotation'>Addicted2</RoughAnnotation>
+              <RoughAnnotation testId='brand-annotation'>Addicted2Community</RoughAnnotation>
             </Text>
-            <Text as='p'>오늘 본 링크를 조용히 모아둠.</Text>
+            <Text as='p'>상식인으로 거듭나기위한 커뮤/쇼츠/릴스 아카이브</Text>
           </div>
           <Button
             type='button'
@@ -93,7 +84,7 @@ export function ArchiveApp() {
         </Card>
       </header>
 
-      {message ? <p className='status-message error'>{message}</p> : null}
+      {statusMessage ? <p className='status-message error'>{statusMessage}</p> : null}
 
       <DateNav date={date} onDateChange={setDate} />
       <FilterBar
@@ -136,8 +127,6 @@ export function ArchiveApp() {
           ))}
         </div>
       </section>
-
-      <RecentLinks items={recentItems} />
 
       {isDialogOpen ? (
         <ItemFormDialog

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -9,6 +10,7 @@ import { Input } from "@/components/retroui/Input";
 import { Textarea } from "@/components/retroui/Textarea";
 import { createItem, fetchMetadata, updateItem } from "@/lib/api-client";
 import { getTodayKey } from "@/lib/date";
+import { archiveQueryKeys } from "@/lib/query-keys";
 import { detectSourceType } from "@/lib/source-type";
 import type { ArchiveItem, SourceType } from "@/types/archive";
 
@@ -85,6 +87,7 @@ export function ItemFormDialog({
   onClose,
   onSaved,
 }: ItemFormDialogProps) {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(() => createInitialForm(mode, item, date));
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,9 +107,15 @@ export function ItemFormDialog({
 
     try {
       let metadata: Awaited<ReturnType<typeof fetchMetadata>> | null = null;
+      const url = form.url.trim();
 
       try {
-        metadata = await fetchMetadata(form.url);
+        metadata = await queryClient.fetchQuery({
+          queryKey: archiveQueryKeys.metadata(url),
+          queryFn: () => fetchMetadata(url),
+          staleTime: 24 * 60 * 60 * 1000,
+          gcTime: 7 * 24 * 60 * 60 * 1000,
+        });
       } catch {
         metadata = null;
       }

@@ -126,7 +126,9 @@ test("shows the date journal, filters, and recent links on mobile", async ({
 
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Addicted2" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Addicted2Community" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: `${today} 링크` })).toBeVisible();
   const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
   await expect(

@@ -5,6 +5,8 @@ import * as cheerio from "cheerio";
 import { detectSourceType } from "@/lib/source-type";
 import type { SourceType } from "@/types/archive";
 
+const METADATA_TIMEOUT_MS = 7000;
+
 export type LinkMetadataResult =
   | {
       ok: true;
@@ -66,24 +68,64 @@ function createTimeoutSignal(timeoutMs: number) {
   };
 }
 
-export async function fetchLinkMetadata(
-  rawUrl: string,
-): Promise<LinkMetadataResult> {
-  let url: string;
+function isYouTubeSourceType(sourceType: SourceType) {
+  return sourceType === "youtube" || sourceType === "shorts";
+}
+
+function getStringField(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function fetchYouTubeOEmbedMetadata(
+  url: string,
+  sourceType: SourceType,
+): Promise<LinkMetadataResult | null> {
+  const oEmbedUrl = new URL("https://www.youtube.com/oembed");
+  oEmbedUrl.searchParams.set("url", url);
+  oEmbedUrl.searchParams.set("format", "json");
+
+  const { signal, cleanup } = createTimeoutSignal(METADATA_TIMEOUT_MS);
 
   try {
-    url = new URL(rawUrl).toString();
-  } catch {
-    return {
-      ok: false,
-      url: rawUrl,
-      sourceType: detectSourceType(rawUrl),
-      message: "Invalid URL",
-    };
-  }
+    const response = await fetch(oEmbedUrl.toString(), {
+      headers: {
+        accept: "application/json",
+      },
+      signal,
+    });
 
-  const sourceType = detectSourceType(url);
-  const { signal, cleanup } = createTimeoutSignal(7000);
+    if (!response.ok) {
+      return null;
+    }
+
+    const metadata = (await response.json()) as Record<string, unknown>;
+    const title = getStringField(metadata.title);
+
+    if (!title) {
+      return null;
+    }
+
+    return {
+      ok: true,
+      url,
+      title,
+      description: null,
+      imageUrl: absolutizeUrl(getStringField(metadata.thumbnail_url), url),
+      siteName: getStringField(metadata.provider_name) ?? "YouTube",
+      sourceType,
+    };
+  } catch {
+    return null;
+  } finally {
+    cleanup();
+  }
+}
+
+async function fetchHtmlMetadata(
+  url: string,
+  sourceType: SourceType,
+): Promise<LinkMetadataResult> {
+  const { signal, cleanup } = createTimeoutSignal(METADATA_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
@@ -162,4 +204,33 @@ export async function fetchLinkMetadata(
   } finally {
     cleanup();
   }
+}
+
+export async function fetchLinkMetadata(
+  rawUrl: string,
+): Promise<LinkMetadataResult> {
+  let url: string;
+
+  try {
+    url = new URL(rawUrl).toString();
+  } catch {
+    return {
+      ok: false,
+      url: rawUrl,
+      sourceType: detectSourceType(rawUrl),
+      message: "Invalid URL",
+    };
+  }
+
+  const sourceType = detectSourceType(url);
+
+  if (isYouTubeSourceType(sourceType)) {
+    const oEmbedMetadata = await fetchYouTubeOEmbedMetadata(url, sourceType);
+
+    if (oEmbedMetadata) {
+      return oEmbedMetadata;
+    }
+  }
+
+  return fetchHtmlMetadata(url, sourceType);
 }
