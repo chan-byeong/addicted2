@@ -1,8 +1,8 @@
-@import "tailwindcss";
-@import "@fontsource/pretendard/400.css";
-@import "@fontsource/pretendard/500.css";
-@import "@fontsource/pretendard/600.css";
-@import "@fontsource/pretendard/700.css";
+@import 'tailwindcss';
+@import '@fontsource/pretendard/400.css';
+@import '@fontsource/pretendard/500.css';
+@import '@fontsource/pretendard/600.css';
+@import '@fontsource/pretendard/700.css';
 
 :root {
   color-scheme: light;
@@ -27,10 +27,8 @@
   --border: #111111;
   --input: #ffffff;
   --ring: #111111;
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui,
-    sans-serif;
-  --font-head: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui,
-    sans-serif;
+  --font-sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  --font-head: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
 }
 
 @theme inline {
@@ -71,9 +69,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background:
-    linear-gradient(#e8e8e8 1px, transparent 1px),
-    var(--background);
+  background: linear-gradient(#e8e8e8 1px, transparent 1px), var(--background);
   background-size: 100% 32px;
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -236,7 +232,7 @@ a:focus-visible {
 }
 
 .section-block h2::after {
-  content: "";
+  content: '';
   flex: 1 1 auto;
   height: 1px;
   background: rgb(17 17 17 / 18%);
@@ -329,7 +325,7 @@ a:focus-visible {
 }
 
 .link-meta span:not(:last-child)::after {
-  content: "/";
+  content: '/';
   margin-left: 6px;
   color: rgb(17 17 17 / 38%);
 }
@@ -410,6 +406,499 @@ a:focus-visible {
   margin-top: 2px;
 }
 
+.maple-page-shell {
+  --maple-green: #047857;
+  --maple-green-dark: #064e3b;
+  --maple-green-muted: #2f6f5f;
+  --maple-orange: #d97706;
+  --maple-orange-dark: #b45309;
+  --maple-amber-bg: #fff7ed;
+  --maple-amber-card: #fffaf0;
+  --maple-amber-soft: #fffbeb;
+  width: min(100%, 720px);
+  min-height: 100svh;
+  margin: 0 auto;
+  background: linear-gradient(135deg, rgb(251 191 36 / 18%), transparent 34%),
+    linear-gradient(315deg, rgb(217 119 6 / 12%), transparent 38%), var(--maple-amber-bg);
+  padding: 14px 12px 56px;
+  color: var(--maple-green-dark);
+}
+
+.maple-page-shell.wide {
+  width: min(100%, 1040px);
+}
+
+.maple-gradient-text {
+  color: var(--maple-green-dark);
+}
+
+.maple-hero__panel,
+.maple-register-card,
+.maple-character-card,
+.maple-profile-panel,
+.maple-stat-panel,
+.maple-equipment-grid,
+.maple-equipment-detail {
+  border-color: var(--maple-orange);
+  background: rgb(255 250 240 / 92%);
+  box-shadow: 3px 3px 0 var(--maple-orange-dark);
+}
+
+.maple-hero__panel {
+  padding: 14px;
+}
+
+.maple-hero h1 {
+  margin: 0;
+  font-size: 31px;
+  font-weight: 800;
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.maple-hero p {
+  margin: 8px 0 0;
+  color: var(--maple-green-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.maple-register-card {
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.maple-register-form {
+  display: grid;
+  gap: 8px;
+}
+
+.maple-register-form label {
+  color: var(--maple-green-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.maple-register-form__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.maple-register-form input {
+  border-color: var(--maple-orange);
+  background: var(--maple-amber-soft);
+}
+
+.maple-register-form button {
+  border-color: var(--maple-orange-dark);
+  background: var(--maple-green);
+  color: #f0fdf4;
+}
+
+.maple-status-message,
+.maple-empty-state {
+  margin: 12px 0 0;
+  border: 1.5px solid var(--maple-orange);
+  background: var(--maple-amber-soft);
+  box-shadow: 2px 2px 0 var(--maple-orange-dark);
+  padding: 10px 11px;
+  color: var(--maple-green-dark);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.maple-status-message.success {
+  background: var(--maple-amber-card);
+  color: var(--maple-green);
+}
+
+.maple-status-message.error {
+  background: #fff1dd;
+  color: var(--maple-orange-dark);
+}
+
+.maple-section,
+.maple-equipment-section {
+  margin-top: 22px;
+}
+
+.maple-section__header,
+.maple-panel-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.maple-section__header h2,
+.maple-panel-heading h2 {
+  margin: 0;
+  color: var(--maple-green-dark);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.maple-section__header span,
+.maple-panel-heading span {
+  border: 1.5px solid var(--maple-orange);
+  background: var(--maple-amber-soft);
+  padding: 4px 7px;
+  color: var(--maple-green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.maple-character-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.maple-character-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.maple-character-card-link:focus-visible {
+  outline: 2px solid var(--maple-green);
+  outline-offset: 4px;
+}
+
+.maple-character-card {
+  display: grid;
+  grid-template-columns: minmax(128px, 34vw) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 166px;
+  padding: 12px;
+}
+
+.maple-character-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--maple-orange-dark);
+}
+
+.maple-character-card__portrait {
+  display: grid;
+  place-items: end center;
+  width: min(34vw, 150px);
+  min-width: 128px;
+  max-width: 150px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1.5px solid var(--maple-orange);
+  background: radial-gradient(circle at 52% 76%, rgb(245 158 11 / 24%), transparent 36%),
+    var(--maple-amber-soft);
+}
+
+.maple-character-card__portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.maple-character-card__portrait span {
+  place-self: center;
+  color: var(--maple-green);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.maple-character-card__body {
+  min-width: 0;
+}
+
+.maple-character-card__eyebrow,
+.maple-character-card__updated {
+  margin: 0;
+  color: var(--maple-green);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.maple-character-card h2 {
+  margin: 2px 0 0;
+  color: var(--maple-green-dark);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.maple-character-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 10px 0;
+}
+
+.maple-character-card__stats div {
+  border-left: 3px solid var(--maple-orange);
+  padding-left: 7px;
+}
+
+.maple-character-card__stats div:nth-child(n + 3) {
+  grid-column: 1 / -1;
+}
+
+.maple-character-card__stats dt,
+.maple-profile-panel dt,
+.maple-stat-grid dt,
+.maple-equipment-detail dt {
+  color: var(--maple-green-muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.maple-character-card__stats dd,
+.maple-profile-panel dd,
+.maple-stat-grid dd,
+.maple-equipment-detail dd {
+  margin: 2px 0 0;
+  color: var(--maple-green-dark);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.maple-detail-nav {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.maple-detail-layout {
+  display: grid;
+  gap: 12px;
+}
+
+.maple-profile-panel {
+  display: grid;
+  grid-template-columns: minmax(136px, 42vw) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 188px;
+  padding: 14px;
+}
+
+.maple-profile-panel__image {
+  display: grid;
+  place-items: end center;
+  width: min(42vw, 170px);
+  min-width: 136px;
+  max-width: 170px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1.5px solid var(--maple-orange);
+  background: radial-gradient(circle at center, rgb(245 158 11 / 22%), transparent 46%),
+    var(--maple-amber-soft);
+}
+
+.maple-profile-panel__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.maple-profile-panel__copy {
+  min-width: 0;
+}
+
+.maple-profile-panel__copy p {
+  margin: 0;
+  color: var(--maple-green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.maple-profile-panel h1 {
+  margin: 3px 0 12px;
+  color: var(--maple-green-dark);
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.maple-profile-panel dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.maple-stat-panel {
+  padding: 14px;
+}
+
+.maple-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 12px 0 0;
+  border-top: 1px solid rgb(217 119 6 / 28%);
+  border-left: 1px solid rgb(217 119 6 / 28%);
+}
+
+.maple-stat-grid div {
+  min-height: 62px;
+  border-right: 1px solid rgb(217 119 6 / 28%);
+  border-bottom: 1px solid rgb(217 119 6 / 28%);
+  background: rgb(255 251 235 / 72%);
+  padding: 9px;
+}
+
+.maple-equipment-layout {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.maple-equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(48px, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.maple-equipment-grid button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1.5px solid rgb(217 119 6 / 42%);
+  border-radius: 4px;
+  background: var(--maple-amber-soft);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.maple-equipment-grid button:hover,
+.maple-equipment-grid button.is-selected {
+  border-color: var(--maple-green);
+  background: #f0fdf4;
+  transform: translateY(-1px);
+}
+
+.maple-equipment-grid button:focus-visible {
+  outline: 2px solid var(--maple-orange);
+  outline-offset: 2px;
+}
+
+.maple-equipment-grid img {
+  display: block;
+  max-width: 82%;
+  max-height: 82%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.maple-equipment-grid span {
+  color: var(--maple-green);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.maple-equipment-detail {
+  padding: 14px;
+}
+
+.maple-equipment-detail__heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.maple-equipment-detail__heading p {
+  margin: 0;
+  color: var(--maple-green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.maple-equipment-detail__heading h3 {
+  margin: 3px 0 0;
+  color: var(--maple-green-dark);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.maple-equipment-detail__heading img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.maple-equipment-detail__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.maple-equipment-detail__meta div {
+  border: 1px solid rgb(217 119 6 / 24%);
+  background: var(--maple-amber-soft);
+  padding: 8px;
+}
+
+.maple-equipment-detail__block {
+  margin-top: 12px;
+  border-top: 1px solid rgb(217 119 6 / 26%);
+  padding-top: 10px;
+}
+
+.maple-equipment-detail__block h4 {
+  margin: 0 0 7px;
+  color: var(--maple-green-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.maple-equipment-detail__block ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--maple-green-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.maple-equipment-detail__block dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.maple-equipment-detail__block dl div {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(217 119 6 / 22%);
+  padding-bottom: 5px;
+}
+
+.maple-equipment-detail__columns {
+  display: grid;
+  gap: 6px;
+}
+
 @media (min-width: 560px) {
   .page-shell {
     min-height: calc(100svh - 48px);
@@ -433,6 +922,58 @@ a:focus-visible {
   .link-card__thumb,
   .link-card__glyph {
     width: 56px;
+  }
+
+  .maple-page-shell {
+    min-height: calc(100svh - 48px);
+    margin-top: 24px;
+    margin-bottom: 24px;
+    border: 1.5px solid var(--maple-orange);
+    box-shadow: 4px 4px 0 var(--maple-orange-dark);
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .maple-detail-layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+    align-items: start;
+  }
+
+  .maple-equipment-layout {
+    grid-template-columns: minmax(260px, 0.86fr) minmax(0, 1.14fr);
+    align-items: start;
+  }
+
+  .maple-equipment-grid {
+    grid-template-columns: repeat(4, minmax(54px, 1fr));
+  }
+
+  .maple-equipment-detail__columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .maple-character-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .maple-character-card {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  .maple-character-card__portrait {
+    width: 160px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .maple-equipment-grid {
+    grid-template-columns: repeat(5, minmax(58px, 1fr));
+  }
+
+  .maple-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

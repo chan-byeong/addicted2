@@ -1,5 +1,5 @@
 import { ArchiveApp } from '@/components/archive-app';
 
-export default function HomePage() {
+export default function Archive() {
   return <ArchiveApp />;
 }

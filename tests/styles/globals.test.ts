@@ -17,4 +17,15 @@ describe("global design tokens", () => {
     expect(css).toContain('--font-sans: "Pretendard"');
     expect(css).not.toMatch(/gaegu/i);
   });
+
+  it("keeps Maple character card portraits large enough for character art", () => {
+    const css = readFileSync(
+      path.join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+
+    expect(css).toContain("grid-template-columns: minmax(128px, 34vw) minmax(0, 1fr)");
+    expect(css).toContain("width: min(34vw, 150px)");
+    expect(css).toContain("grid-template-columns: 160px minmax(0, 1fr)");
+  });
 });

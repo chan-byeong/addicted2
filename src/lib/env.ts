@@ -1,6 +1,26 @@
+export class MissingRequiredEnvError extends Error {
+  variableName: string;
+
+  constructor(variableName: string) {
+    super(`Missing required environment variable: ${variableName}`);
+    this.name = "MissingRequiredEnvError";
+    this.variableName = variableName;
+  }
+}
+
+export function isMissingRequiredEnvError(
+  error: unknown,
+  variableName?: string,
+): error is MissingRequiredEnvError {
+  return (
+    error instanceof MissingRequiredEnvError &&
+    (variableName === undefined || error.variableName === variableName)
+  );
+}
+
 function readRequiredEnv(value: string | undefined, name: string) {
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    throw new MissingRequiredEnvError(name);
   }
 
   return value;
@@ -35,6 +55,15 @@ export function getServerEnv() {
     archiveWritePassword: readRequiredEnv(
       process.env.ARCHIVE_WRITE_PASSWORD,
       "ARCHIVE_WRITE_PASSWORD",
+    ),
+  };
+}
+
+export function getNexonEnv() {
+  return {
+    nexonOpenApiKey: readRequiredEnv(
+      process.env.NEXON_OPEN_API_KEY,
+      "NEXON_OPEN_API_KEY",
     ),
   };
 }
