@@ -18,6 +18,10 @@ const item = {
   imageUrl: null,
   siteName: "Example",
   sourceType: "other",
+  contentType: "link",
+  storagePath: null,
+  mediaMimeType: null,
+  mediaSize: null,
   note: "좋았음",
   authorName: "민수",
   entryDate: "2026-07-01",
@@ -86,6 +90,8 @@ describe("ArchiveApp", () => {
     await user.click(screen.getByRole("button", { name: "등록" }));
 
     expect(screen.getByLabelText("URL")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사진" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "동영상" })).toBeInTheDocument();
     expect(screen.getByLabelText("메모")).toBeInTheDocument();
     expect(screen.queryByLabelText("제목")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("닉네임")).not.toBeInTheDocument();
@@ -99,6 +105,32 @@ describe("ArchiveApp", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("제목")).toBeInTheDocument();
     });
+  });
+
+  it("searches the entire archive without a date parameter", async () => {
+    const user = userEvent.setup();
+    const requestedUrls: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request) => {
+        requestedUrls.push(String(url));
+        return Response.json({ items: [item] });
+      }),
+    );
+
+    renderArchiveApp();
+    await user.type(screen.getByLabelText("검색어"), "example");
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "전체 아카이브 결과" }),
+      ).toBeInTheDocument();
+    });
+
+    const searchRequest = requestedUrls.find((url) => url.includes("query=example"));
+    expect(searchRequest).toBeDefined();
+    expect(searchRequest).not.toContain("date=");
   });
 
   it("requests metadata again after a failed result", async () => {
@@ -203,6 +235,10 @@ describe("ArchiveApp", () => {
             imageUrl: body.imageUrl || null,
             siteName: body.siteName || null,
             sourceType: body.sourceType,
+            contentType: "link",
+            storagePath: null,
+            mediaMimeType: null,
+            mediaSize: null,
             note: body.note || null,
             authorName: body.authorName,
             entryDate: body.entryDate,
@@ -243,7 +279,7 @@ describe("ArchiveApp", () => {
 
     expect(metadataRequests).toBe(1);
     const dailyLinks = screen.getByRole("region", {
-      name: `${getTodayKey()} 링크`,
+      name: `${getTodayKey()} 아카이브`,
     });
     expect(
       within(dailyLinks).getAllByRole("link", { name: "캐시된 쇼츠 제목" }),

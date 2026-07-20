@@ -267,6 +267,34 @@ a:focus-visible {
   outline-offset: 3px;
 }
 
+.link-card--media {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.link-card__media,
+.link-card__media-fallback {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-height: min(60svh, 480px);
+  border: 1.5px solid var(--border);
+  background: var(--secondary);
+  object-fit: contain;
+}
+
+.link-card__media--video {
+  position: relative;
+  z-index: 2;
+}
+
+.link-card__media-fallback {
+  aspect-ratio: 16 / 9;
+}
+
+.link-list.compact .link-card__media,
+.link-list.compact .link-card__media-fallback {
+  max-height: 140px;
+}
+
 .link-list.compact .link-card {
   grid-template-columns: 36px minmax(0, 1fr);
   gap: 8px;
@@ -328,6 +356,17 @@ a:focus-visible {
 
 .link-title:hover {
   text-decoration-line: underline;
+}
+
+.media-file-name {
+  display: block;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .link-meta {
@@ -414,6 +453,19 @@ a:focus-visible {
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 600;
+}
+
+.archive-type-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-help {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 .dialog-header,

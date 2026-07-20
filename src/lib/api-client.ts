@@ -1,6 +1,8 @@
 import type {
   ArchiveItem,
   ArchiveItemInput,
+  ContentType,
+  CreateArchiveItemRequest,
   ItemListParams,
 } from "@/types/archive";
 import type {
@@ -78,7 +80,7 @@ export async function fetchMetadata(url: string) {
   return metadata;
 }
 
-export async function createItem(input: ArchiveItemInput) {
+export async function createItem(input: CreateArchiveItemRequest) {
   const data = await parseJsonResponse<{ item: ArchiveItem }>(
     await fetch("/api/items", {
       method: "POST",
@@ -88,6 +90,43 @@ export async function createItem(input: ArchiveItemInput) {
   );
 
   return data.item;
+}
+
+export async function prepareMediaUpload(input: {
+  contentType: Exclude<ContentType, "link">;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+}) {
+  return parseJsonResponse<{ path: string; token: string }>(
+    await fetch("/api/items/media-upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function uploadMediaFile(
+  path: string,
+  token: string,
+  file: File,
+) {
+  const [{ createBrowserSupabaseClient }, { ARCHIVE_MEDIA_BUCKET }] =
+    await Promise.all([
+      import("@/lib/supabase/browser"),
+      import("@/lib/archive-media"),
+    ]);
+  const supabase = createBrowserSupabaseClient();
+  const { error } = await supabase.storage
+    .from(ARCHIVE_MEDIA_BUCKET)
+    .uploadToSignedUrl(path, token, file, {
+      contentType: file.type,
+    });
+
+  if (error) {
+    throw new Error(error.message || "파일을 업로드하지 못했습니다.");
+  }
 }
 
 export async function updateItem(

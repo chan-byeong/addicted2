@@ -1,6 +1,10 @@
 import { z } from "zod";
+import {
+  getAllowedMimeTypes,
+  getMediaSizeLimit,
+} from "@/lib/archive-media";
 import { isDateKey } from "@/lib/date";
-import { SOURCE_TYPES } from "@/types/archive";
+import { ARCHIVE_FILTER_TYPES, SOURCE_TYPES } from "@/types/archive";
 
 const dateKeySchema = z.string().refine(isDateKey, {
   message: "Invalid date key",
@@ -62,7 +66,8 @@ export const metadataRequestSchema = z.object({
   url: normalizedUrlSchema,
 });
 
-const itemPayloadSchema = z.object({
+const linkItemPayloadSchema = z.object({
+  contentType: z.literal("link").default("link"),
   url: normalizedUrlSchema,
   title: z.string().trim().min(1).max(180),
   description: nullableTextSchema,
@@ -74,16 +79,75 @@ const itemPayloadSchema = z.object({
   entryDate: dateKeySchema,
 });
 
-export const createItemSchema = itemPayloadSchema;
+const mediaUploadFieldsSchema = z.object({
+  contentType: z.enum(["image", "video"]),
+  fileName: z.string().trim().min(1).max(180),
+  mimeType: z.string().trim().min(1).max(100),
+  fileSize: z.number().int().positive(),
+});
 
-export const upsertItemSchema = itemPayloadSchema.extend({
+type MediaUploadFields = z.infer<typeof mediaUploadFieldsSchema>;
+
+function validateMediaUpload(
+  input: MediaUploadFields,
+  context: z.RefinementCtx,
+) {
+  if (!getAllowedMimeTypes(input.contentType).includes(input.mimeType)) {
+    context.addIssue({
+      code: "custom",
+      path: ["mimeType"],
+      message: "Unsupported media type",
+    });
+  }
+
+  if (input.fileSize > getMediaSizeLimit(input.contentType)) {
+    context.addIssue({
+      code: "custom",
+      path: ["fileSize"],
+      message: "Media file is too large",
+    });
+  }
+}
+
+const mediaItemPayloadSchema = mediaUploadFieldsSchema
+  .extend({
+    storagePath: z
+      .string()
+      .regex(/^\d{4}-\d{2}\/[0-9a-f-]{36}\.[a-z0-9]+$/),
+    note: nullableNoteSchema,
+    authorName: z.string().trim().min(1).max(40),
+    entryDate: dateKeySchema,
+  })
+  .superRefine(validateMediaUpload);
+
+const createItemPayloadSchema = z.union([
+  linkItemPayloadSchema,
+  mediaItemPayloadSchema,
+]);
+
+export const createItemSchema = z.preprocess((value) => {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !("contentType" in value)
+  ) {
+    return { ...value, contentType: "link" };
+  }
+
+  return value;
+}, createItemPayloadSchema);
+
+export const upsertItemSchema = linkItemPayloadSchema.extend({
   password: z.string().min(1),
 });
+
+export const mediaUploadRequestSchema =
+  mediaUploadFieldsSchema.superRefine(validateMediaUpload);
 
 export const itemListParamsSchema = z.object({
   date: dateKeySchema.optional(),
   query: z.string().trim().max(120).optional(),
-  sourceType: z.enum([...SOURCE_TYPES, "all"]).optional(),
+  sourceType: z.enum([...ARCHIVE_FILTER_TYPES, "all"]).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 

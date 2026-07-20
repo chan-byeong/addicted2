@@ -10,6 +10,10 @@ type MockArchiveItem = {
   imageUrl: string | null;
   siteName: string | null;
   sourceType: "youtube" | "shorts" | "community" | "other";
+  contentType: "link" | "image" | "video";
+  storagePath: string | null;
+  mediaMimeType: string | null;
+  mediaSize: number | null;
   note: string | null;
   authorName: string;
   entryDate: string;
@@ -27,6 +31,10 @@ const baseItem: MockArchiveItem = {
   imageUrl: null,
   siteName: "YouTube",
   sourceType: "youtube",
+  contentType: "link",
+  storagePath: null,
+  mediaMimeType: null,
+  mediaSize: null,
   note: "저녁에 보기",
   authorName: "병",
   entryDate: today,
@@ -100,6 +108,10 @@ async function mockArchiveApi(page: Page, items: MockArchiveItem[]) {
         imageUrl: null,
         siteName: null,
         sourceType: body.sourceType,
+        contentType: "link",
+        storagePath: null,
+        mediaMimeType: null,
+        mediaSize: null,
         note: body.note || null,
         authorName: body.authorName,
         entryDate: body.entryDate,
@@ -119,7 +131,7 @@ async function mockArchiveApi(page: Page, items: MockArchiveItem[]) {
   });
 }
 
-test("shows the date journal, filters, and recent links on mobile", async ({
+test("shows the date journal and global search on mobile", async ({
   page,
 }) => {
   await mockArchiveApi(page, [baseItem]);
@@ -129,16 +141,14 @@ test("shows the date journal, filters, and recent links on mobile", async ({
   await expect(
     page.getByRole("heading", { name: "Addicted2Community" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: `${today} 링크` })).toBeVisible();
-  const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
+  await expect(page.getByRole("heading", { name: `${today} 아카이브` })).toBeVisible();
+  const dailyLinks = page.getByRole("region", { name: `${today} 아카이브` });
   await expect(
     dailyLinks.getByRole("link", { name: "오늘의 추천 영상" }),
   ).toBeVisible();
   await expect(dailyLinks.getByText("저녁에 보기")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "최근 링크" })).toBeVisible();
-
   await page.getByLabel("검색어").fill("없는 검색어");
-  await expect(page.getByText("이 날짜에 등록된 링크가 없습니다.")).toBeVisible();
+  await expect(page.getByText("조건에 맞는 아카이브 항목이 없습니다.")).toBeVisible();
 });
 
 test("creates a link after metadata fallback without a shared password prompt", async ({
@@ -164,7 +174,7 @@ test("creates a link after metadata fallback without a shared password prompt", 
 
   await expect(page.getByRole("dialog")).toBeHidden();
   expect(prompted).toBe(false);
-  const dailyLinks = page.getByRole("region", { name: `${today} 링크` });
+  const dailyLinks = page.getByRole("region", { name: `${today} 아카이브` });
   await expect(
     dailyLinks.getByRole("link", { name: "수동 입력 제목" }),
   ).toBeVisible();

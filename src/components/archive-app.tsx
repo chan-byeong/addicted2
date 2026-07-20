@@ -14,38 +14,36 @@ import { Text } from '@/components/retroui/Text';
 import { fetchItems } from '@/lib/api-client';
 import { getTodayKey } from '@/lib/date';
 import { archiveQueryKeys } from '@/lib/query-keys';
-import type { ArchiveItem, SourceType } from '@/types/archive';
+import type { ArchiveFilterType, ArchiveItem } from '@/types/archive';
 
 export function ArchiveApp() {
   const queryClient = useQueryClient();
   const [date, setDate] = useState(() => getTodayKey());
   const [query, setQuery] = useState('');
-  const [sourceType, setSourceType] = useState<SourceType | 'all'>('all');
+  const [sourceType, setSourceType] = useState<ArchiveFilterType | 'all'>('all');
   const [message, setMessage] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ArchiveItem | null>(null);
 
+  const isGlobalView = query.trim().length > 0 || sourceType !== 'all';
   const listParams = useMemo(
-    () => ({ date, query, sourceType, limit: 50 }),
-    [date, query, sourceType]
+    () => ({
+      date: isGlobalView ? undefined : date,
+      query,
+      sourceType,
+      limit: 50,
+    }),
+    [date, isGlobalView, query, sourceType]
   );
-
-  const recentParams = useMemo(() => ({ sourceType: 'all' as const, limit: 5 }), []);
 
   const itemsQuery = useQuery({
     queryKey: archiveQueryKeys.items(listParams),
     queryFn: () => fetchItems(listParams),
   });
 
-  const recentItemsQuery = useQuery({
-    queryKey: archiveQueryKeys.items(recentParams),
-    queryFn: () => fetchItems(recentParams),
-  });
-
   const items = itemsQuery.data ?? [];
-  const recentItems = recentItemsQuery.data ?? [];
-  const isLoading = itemsQuery.isPending || recentItemsQuery.isPending;
-  const queryError = itemsQuery.error || recentItemsQuery.error;
+  const isLoading = itemsQuery.isPending;
+  const queryError = itemsQuery.error;
   const statusMessage =
     message ||
     (queryError instanceof Error
@@ -69,7 +67,7 @@ export function ArchiveApp() {
             <Text as='h1'>
               <RoughAnnotation testId='brand-annotation'>Addicted2Community</RoughAnnotation>
             </Text>
-            <Text as='p'>상식인으로 거듭나기위한 커뮤/쇼츠/릴스 아카이브</Text>
+            <Text as='p'>링크와 사진, 동영상을 함께 모으는 단톡방 아카이브</Text>
           </div>
           <Button
             type='button'
@@ -94,11 +92,17 @@ export function ArchiveApp() {
         onSourceTypeChange={setSourceType}
       />
 
-      <section className='section-block' aria-labelledby='daily-links-title'>
-        <h2 id='daily-links-title'>{date} 링크</h2>
+      <section className='section-block' aria-labelledby='archive-items-title'>
+        <h2 id='archive-items-title'>
+          {isGlobalView ? '전체 아카이브 결과' : `${date} 아카이브`}
+        </h2>
         {isLoading ? <p className='empty-state'>불러오는 중입니다.</p> : null}
         {!isLoading && items.length === 0 ? (
-          <p className='empty-state'>이 날짜에 등록된 링크가 없습니다.</p>
+          <p className='empty-state'>
+            {isGlobalView
+              ? '조건에 맞는 아카이브 항목이 없습니다.'
+              : '이 날짜에 등록된 항목이 없습니다.'}
+          </p>
         ) : null}
         <div className='link-list'>
           {items.map((item, index) => (

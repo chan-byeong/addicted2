@@ -110,4 +110,37 @@ describe("validation schemas", () => {
       }).limit,
     ).toBe(5);
   });
+
+  it("parses uploaded image items", () => {
+    const result = createItemSchema.parse({
+      contentType: "image",
+      storagePath: "2026-07/00000000-0000-4000-8000-000000000001.jpg",
+      fileName: "photo.jpg",
+      mimeType: "image/jpeg",
+      fileSize: 1024,
+      note: "여행 기록",
+      authorName: "민수",
+      entryDate: "2026-07-20",
+    });
+
+    expect(result).toMatchObject({
+      contentType: "image",
+      fileName: "photo.jpg",
+      mimeType: "image/jpeg",
+    });
+  });
+
+  it("rejects oversized videos", () => {
+    expect(() =>
+      createItemSchema.parse({
+        contentType: "video",
+        storagePath: "2026-07/00000000-0000-4000-8000-000000000001.mp4",
+        fileName: "clip.mp4",
+        mimeType: "video/mp4",
+        fileSize: 50 * 1024 * 1024 + 1,
+        authorName: "민수",
+        entryDate: "2026-07-20",
+      }),
+    ).toThrow();
+  });
 });

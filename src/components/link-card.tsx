@@ -19,6 +19,12 @@ const SOURCE_LABELS: Record<ArchiveItem['sourceType'], string> = {
   other: '기타',
 };
 
+const CONTENT_LABELS: Record<ArchiveItem['contentType'], string> = {
+  link: '링크',
+  image: '사진',
+  video: '동영상',
+};
+
 function getHostname(url: string) {
   try {
     return new URL(url).hostname;
@@ -31,24 +37,48 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
   const [imageFailed, setImageFailed] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const noteId = useId();
+  const isLink = item.contentType === 'link';
+  const itemLabel = isLink ? item.title : `${CONTENT_LABELS[item.contentType]} ${item.title}`;
   const createdAt = new Date(item.createdAt).toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   return (
-    <Card className='link-card' role='article'>
+    <Card
+      className={`link-card${isLink ? '' : ' link-card--media'}`}
+      role='article'
+    >
       {item.note ? (
         <button
           type='button'
           className='link-card__toggle'
           aria-expanded={isNoteExpanded}
           aria-controls={noteId}
-          aria-label={`${item.title} 메모 ${isNoteExpanded ? '접기' : '펼치기'}`}
+          aria-label={`${itemLabel} 메모 ${isNoteExpanded ? '접기' : '펼치기'}`}
           onClick={() => setIsNoteExpanded((expanded) => !expanded)}
         />
       ) : null}
-      {item.imageUrl && !imageFailed ? (
+      {!isLink && !imageFailed ? (
+        item.contentType === 'image' ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.url}
+            alt={item.note || item.title}
+            className='link-card__media'
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <video
+            src={item.url}
+            className='link-card__media link-card__media--video'
+            controls
+            preload='metadata'
+          >
+            동영상을 재생할 수 없습니다.
+          </video>
+        )
+      ) : item.imageUrl && !imageFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={item.imageUrl}
@@ -57,7 +87,10 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <div className='link-card__glyph' aria-hidden='true'>
+        <div
+          className={`link-card__glyph${isLink ? '' : ' link-card__media-fallback'}`}
+          aria-hidden='true'
+        >
           <svg viewBox='0 0 72 72'>
             <path d='M18 42c0-13 7-24 19-25 11-1 18 8 17 20-1 15-10 22-22 20-9-1-14-7-14-15Z' />
             <path d='M31 32c5-3 10-3 15 0M28 43c6 6 16 7 23 0' />
@@ -65,20 +98,23 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
         </div>
       )}
       <div className='link-card__body'>
-        <a href={item.url} target='_blank' rel='noreferrer' className='link-title'>
-          {emphasizeTitle ? (
-            <RoughAnnotation type='underline'>{item.title}</RoughAnnotation>
-          ) : (
-            item.title
-          )}
-        </a>
+        {isLink ? (
+          <a href={item.url} target='_blank' rel='noreferrer' className='link-title'>
+            {emphasizeTitle ? (
+              <RoughAnnotation type='underline'>{item.title}</RoughAnnotation>
+            ) : (
+              item.title
+            )}
+          </a>
+        ) : (
+          <strong className='media-file-name'>{item.title}</strong>
+        )}
         <div className='link-meta'>
-          <span>{item.siteName || getHostname(item.url)}</span>
-          <span>{SOURCE_LABELS[item.sourceType]}</span>
+          {isLink ? <span>{item.siteName || getHostname(item.url)}</span> : null}
+          <span>{isLink ? SOURCE_LABELS[item.sourceType] : CONTENT_LABELS[item.contentType]}</span>
           <span>{item.authorName}</span>
           <span>{createdAt}</span>
         </div>
-        {item.description ? <p>{item.description}</p> : null}
         {item.note ? (
           <p
             id={noteId}

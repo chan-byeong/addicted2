@@ -7,6 +7,11 @@ vi.mock("@/lib/archive-repository", () => ({
   updateArchiveItem: vi.fn(),
 }));
 
+vi.mock("@/lib/media-storage", () => ({
+  removeUploadedMedia: vi.fn(),
+  resolveUploadedMedia: vi.fn(),
+}));
+
 const exampleItem = {
   id: "00000000-0000-0000-0000-000000000001",
   url: "https://example.com/",
@@ -15,6 +20,10 @@ const exampleItem = {
   imageUrl: null,
   siteName: "example.com",
   sourceType: "other",
+  contentType: "link",
+  storagePath: null,
+  mediaMimeType: null,
+  mediaSize: null,
   note: null,
   authorName: "민수",
   entryDate: "2026-07-01",
@@ -73,12 +82,16 @@ describe("/api/items routes", () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ item: exampleItem });
     expect(repo.createArchiveItem).toHaveBeenCalledWith({
+      contentType: "link",
       url: "https://example.com/",
       title: "Example",
       description: null,
       imageUrl: null,
       siteName: null,
       sourceType: "other",
+      storagePath: null,
+      mediaMimeType: null,
+      mediaSize: null,
       note: null,
       authorName: "민수",
       entryDate: "2026-07-01",
@@ -106,6 +119,61 @@ describe("/api/items routes", () => {
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ item: exampleItem });
+  });
+
+  it("creates an uploaded image item", async () => {
+    const repo = await import("@/lib/archive-repository");
+    const mediaStorage = await import("@/lib/media-storage");
+    const imageItem = {
+      ...exampleItem,
+      url: "https://example.supabase.co/storage/image.jpg",
+      title: "여행 사진.jpg",
+      imageUrl: "https://example.supabase.co/storage/image.jpg",
+      siteName: null,
+      contentType: "image",
+      storagePath: "2026-07/00000000-0000-4000-8000-000000000001.jpg",
+      mediaMimeType: "image/jpeg",
+      mediaSize: 1024,
+    } as const;
+    vi.mocked(mediaStorage.resolveUploadedMedia).mockResolvedValue(imageItem.url);
+    vi.mocked(repo.createArchiveItem).mockResolvedValue(imageItem);
+
+    const { POST } = await import("@/app/api/items/route");
+    const response = await POST(
+      new Request("http://localhost/api/items", {
+        method: "POST",
+        body: JSON.stringify({
+          contentType: "image",
+          storagePath: imageItem.storagePath,
+          fileName: imageItem.title,
+          mimeType: imageItem.mediaMimeType,
+          fileSize: imageItem.mediaSize,
+          note: "여행 기록",
+          authorName: "민수",
+          entryDate: "2026-07-20",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mediaStorage.resolveUploadedMedia).toHaveBeenCalledWith(
+      imageItem.storagePath,
+    );
+    expect(repo.createArchiveItem).toHaveBeenCalledWith({
+      contentType: "image",
+      url: imageItem.url,
+      title: "여행 사진.jpg",
+      description: null,
+      imageUrl: imageItem.url,
+      siteName: null,
+      sourceType: "other",
+      storagePath: imageItem.storagePath,
+      mediaMimeType: "image/jpeg",
+      mediaSize: 1024,
+      note: "여행 기록",
+      authorName: "민수",
+      entryDate: "2026-07-20",
+    });
   });
 
   it("updates an item with the shared password", async () => {

@@ -7,7 +7,6 @@ import type {
   ItemListParams,
 } from "@/types/archive";
 
-const QUERY_CANDIDATE_LIMIT = 200;
 const SUPABASE_NO_ROWS_CODE = "PGRST116";
 
 type SupabaseErrorLike = {
@@ -92,6 +91,10 @@ function mapArchiveItem(row: ArchiveItemRow): ArchiveItem {
     imageUrl: row.image_url,
     siteName: row.site_name,
     sourceType: row.source_type,
+    contentType: row.content_type,
+    storagePath: row.storage_path,
+    mediaMimeType: row.media_mime_type,
+    mediaSize: row.media_size,
     note: row.note,
     authorName: row.author_name,
     entryDate: row.entry_date,
@@ -104,6 +107,10 @@ function normalizeQueryValue(value: string | undefined) {
   const normalized = value?.trim();
 
   return normalized && normalized.length > 0 ? normalized.toLowerCase() : null;
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
 }
 
 function getArchiveItemSearchText(item: Pick<ArchiveItem, "title" | "description" | "note" | "url" | "siteName">) {
@@ -141,12 +148,16 @@ export function filterArchiveItemsByQuery(
 
 function toInsertRow(input: ArchiveItemInput) {
   return {
+    content_type: input.contentType ?? "link",
     url: input.url,
     title: input.title,
     description: input.description ?? null,
     image_url: input.imageUrl ?? null,
     site_name: input.siteName ?? null,
     source_type: input.sourceType,
+    storage_path: input.storagePath ?? null,
+    media_mime_type: input.mediaMimeType ?? null,
+    media_size: input.mediaSize ?? null,
     note: input.note ?? null,
     author_name: input.authorName,
     entry_date: input.entryDate,
@@ -155,12 +166,22 @@ function toInsertRow(input: ArchiveItemInput) {
 
 function toUpdateRow(input: ArchiveItemUpdateInput) {
   return {
+    ...(input.contentType === undefined
+      ? {}
+      : { content_type: input.contentType }),
     ...(input.url === undefined ? {} : { url: input.url }),
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(input.description === undefined ? {} : { description: input.description }),
     ...(input.imageUrl === undefined ? {} : { image_url: input.imageUrl }),
     ...(input.siteName === undefined ? {} : { site_name: input.siteName }),
     ...(input.sourceType === undefined ? {} : { source_type: input.sourceType }),
+    ...(input.storagePath === undefined
+      ? {}
+      : { storage_path: input.storagePath }),
+    ...(input.mediaMimeType === undefined
+      ? {}
+      : { media_mime_type: input.mediaMimeType }),
+    ...(input.mediaSize === undefined ? {} : { media_size: input.mediaSize }),
     ...(input.note === undefined ? {} : { note: input.note }),
     ...(input.authorName === undefined
       ? {}
@@ -172,8 +193,11 @@ function toUpdateRow(input: ArchiveItemUpdateInput) {
 export async function listArchiveItems(params: ItemListParams) {
   const supabase = createServerSupabaseClient();
   const limit = params.limit ?? 50;
-  const hasQuery = Boolean(normalizeQueryValue(params.query));
-  const candidateLimit = hasQuery ? Math.max(limit, QUERY_CANDIDATE_LIMIT) : limit;
+  const normalizedQuery = normalizeQueryValue(params.query);
+  const hasFilter = Boolean(
+    params.sourceType && params.sourceType !== "all",
+  );
+  const isGlobalSearch = Boolean(normalizedQuery || hasFilter);
 
   let queryBuilder = supabase
     .from("archive_items")
@@ -181,15 +205,26 @@ export async function listArchiveItems(params: ItemListParams) {
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  if (params.date) {
+  if (params.date && !isGlobalSearch) {
     queryBuilder = queryBuilder.eq("entry_date", params.date);
   }
 
-  if (params.sourceType && params.sourceType !== "all") {
-    queryBuilder = queryBuilder.eq("source_type", params.sourceType);
+  if (params.sourceType === "image" || params.sourceType === "video") {
+    queryBuilder = queryBuilder.eq("content_type", params.sourceType);
+  } else if (params.sourceType && params.sourceType !== "all") {
+    queryBuilder = queryBuilder
+      .eq("content_type", "link")
+      .eq("source_type", params.sourceType);
   }
 
-  queryBuilder = queryBuilder.limit(candidateLimit);
+  if (normalizedQuery) {
+    queryBuilder = queryBuilder.ilike(
+      "search_text",
+      `%${escapeLikePattern(normalizedQuery)}%`,
+    );
+  }
+
+  queryBuilder = queryBuilder.limit(limit);
 
   const { data, error } = await queryBuilder;
 
@@ -197,12 +232,7 @@ export async function listArchiveItems(params: ItemListParams) {
     throw toArchiveRepositoryError(error);
   }
 
-  const items = (data as ArchiveItemRow[]).map(mapArchiveItem);
-  const filteredItems = hasQuery
-    ? filterArchiveItemsByQuery(items, params.query ?? "")
-    : items;
-
-  return filteredItems.slice(0, limit);
+  return (data as ArchiveItemRow[]).map(mapArchiveItem);
 }
 
 export async function createArchiveItem(input: ArchiveItemInput) {

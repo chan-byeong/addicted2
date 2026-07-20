@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ArchiveRepositoryError,
   filterArchiveItemsByQuery,
+  listArchiveItems,
   matchesArchiveItemQuery,
   updateArchiveItem,
   toArchiveRepositoryError,
@@ -21,6 +22,10 @@ const sampleItem = {
   imageUrl: null,
   siteName: "Example Site",
   sourceType: "other",
+  contentType: "link",
+  storagePath: null,
+  mediaMimeType: null,
+  mediaSize: null,
   note: "Shared from the group",
   authorName: "민수",
   entryDate: "2026-07-01",
@@ -41,6 +46,81 @@ describe("archive repository search helpers", () => {
   it("filters a list case-insensitively", () => {
     expect(filterArchiveItemsByQuery([sampleItem], "useful")).toHaveLength(1);
     expect(filterArchiveItemsByQuery([sampleItem], "missing")).toHaveLength(0);
+  });
+});
+
+describe("archive repository list scope", () => {
+  function createListQuery() {
+    const query = {
+      select: vi.fn(),
+      is: vi.fn(),
+      order: vi.fn(),
+      eq: vi.fn(),
+      ilike: vi.fn(),
+      limit: vi.fn(),
+      then: vi.fn(),
+    };
+
+    query.select.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.ilike.mockReturnValue(query);
+    query.limit.mockReturnValue(query);
+    query.then.mockImplementation((resolve) =>
+      Promise.resolve(resolve({ data: [], error: null })),
+    );
+
+    return query;
+  }
+
+  it("searches all dates when a text query is present", async () => {
+    const query = createListQuery();
+    const from = vi.fn().mockReturnValue(query);
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
+    vi.mocked(createServerSupabaseClient).mockReturnValue({ from } as never);
+
+    await listArchiveItems({
+      date: "2026-07-20",
+      query: "여행",
+      sourceType: "all",
+      limit: 50,
+    });
+
+    expect(query.eq).not.toHaveBeenCalledWith("entry_date", "2026-07-20");
+    expect(query.ilike).toHaveBeenCalledWith("search_text", "%여행%");
+  });
+
+  it("filters uploaded images across all dates", async () => {
+    const query = createListQuery();
+    const from = vi.fn().mockReturnValue(query);
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
+    vi.mocked(createServerSupabaseClient).mockReturnValue({ from } as never);
+
+    await listArchiveItems({
+      date: "2026-07-20",
+      sourceType: "image",
+      limit: 50,
+    });
+
+    expect(query.eq).not.toHaveBeenCalledWith("entry_date", "2026-07-20");
+    expect(query.eq).toHaveBeenCalledWith("content_type", "image");
+  });
+
+  it("keeps the selected date for an unfiltered journal view", async () => {
+    const query = createListQuery();
+    const from = vi.fn().mockReturnValue(query);
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
+    vi.mocked(createServerSupabaseClient).mockReturnValue({ from } as never);
+
+    await listArchiveItems({
+      date: "2026-07-20",
+      sourceType: "all",
+      limit: 50,
+    });
+
+    expect(query.eq).toHaveBeenCalledWith("entry_date", "2026-07-20");
+    expect(query.ilike).not.toHaveBeenCalled();
   });
 });
 

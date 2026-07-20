@@ -8,11 +8,25 @@ import { Button } from "@/components/retroui/Button";
 import { Dialog } from "@/components/retroui/Dialog";
 import { Input } from "@/components/retroui/Input";
 import { Textarea } from "@/components/retroui/Textarea";
-import { createItem, fetchMetadata, updateItem } from "@/lib/api-client";
+import {
+  createItem,
+  fetchMetadata,
+  prepareMediaUpload,
+  updateItem,
+  uploadMediaFile,
+} from "@/lib/api-client";
+import {
+  getAllowedMimeTypes,
+  getMediaSizeLimit,
+} from "@/lib/archive-media";
 import { getTodayKey } from "@/lib/date";
 import { archiveQueryKeys } from "@/lib/query-keys";
 import { detectSourceType } from "@/lib/source-type";
-import type { ArchiveItem, SourceType } from "@/types/archive";
+import type {
+  ArchiveItem,
+  ContentType,
+  SourceType,
+} from "@/types/archive";
 
 type ItemFormDialogProps = {
   mode: "create" | "edit";
@@ -98,6 +112,10 @@ export function ItemFormDialog({
 }: ItemFormDialogProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(() => createInitialForm(mode, item, date));
+  const [contentType, setContentType] = useState<ContentType>(
+    item?.contentType ?? "link",
+  );
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
@@ -180,6 +198,50 @@ export function ItemFormDialog({
     setIsSubmitting(true);
 
     try {
+      if (mode === "create" && contentType !== "link") {
+        if (!mediaFile) {
+          setMessage(
+            contentType === "image"
+              ? "사진 파일을 선택해 주세요."
+              : "동영상 파일을 선택해 주세요.",
+          );
+          return;
+        }
+
+        if (!getAllowedMimeTypes(contentType).includes(mediaFile.type)) {
+          setMessage("지원하지 않는 파일 형식입니다.");
+          return;
+        }
+
+        if (mediaFile.size > getMediaSizeLimit(contentType)) {
+          const limitInMb = getMediaSizeLimit(contentType) / 1024 / 1024;
+          setMessage(`파일 크기는 ${limitInMb}MB 이하여야 합니다.`);
+          return;
+        }
+
+        const upload = await prepareMediaUpload({
+          contentType,
+          fileName: mediaFile.name,
+          mimeType: mediaFile.type,
+          fileSize: mediaFile.size,
+        });
+        await uploadMediaFile(upload.path, upload.token, mediaFile);
+        await createItem({
+          contentType,
+          storagePath: upload.path,
+          fileName: mediaFile.name,
+          mimeType: mediaFile.type,
+          fileSize: mediaFile.size,
+          note: form.note || null,
+          authorName: form.authorName.trim() || "익명",
+          entryDate: form.entryDate,
+        });
+
+        await onSaved();
+        onClose();
+        return;
+      }
+
       const url = form.url.trim();
       let nextForm = form;
 
@@ -213,6 +275,7 @@ export function ItemFormDialog({
       const title = nextForm.title.trim() || getFallbackTitle(normalizedUrl);
 
       const input = {
+        contentType: "link" as const,
         url: normalizedUrl,
         title,
         description: nextForm.description.trim() || null,
@@ -257,12 +320,12 @@ export function ItemFormDialog({
       <Dialog.Content
         size="screen"
         className="dialog"
-        aria-label={mode === "edit" ? "링크 수정" : "링크 등록"}
+        aria-label={mode === "edit" ? "링크 수정" : "아카이브 등록"}
       >
         <form onSubmit={handleSubmit}>
           <header className="dialog-header">
             <Dialog.Title className="dialog-title">
-              {mode === "edit" ? "링크 수정" : "링크 등록"}
+              {mode === "edit" ? "링크 수정" : "아카이브 등록"}
             </Dialog.Title>
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               닫기
@@ -271,29 +334,77 @@ export function ItemFormDialog({
 
           {message ? <p className="status-message error">{message}</p> : null}
 
-          <label>
-            URL
-            <Input
-              required
-              type="url"
-              placeholder="https://"
-              value={form.url}
-              onChange={(event) => {
-                updateField("url", event.target.value);
-                setMetadataFailed(false);
-                setHasPreview(false);
-              }}
-              onBlur={() => {
-                void handleFetchMetadata();
-              }}
-            />
-          </label>
+          {mode === "create" ? (
+            <div className="archive-type-picker" role="group" aria-label="등록 유형">
+              {(
+                [
+                  ["link", "링크"],
+                  ["image", "사진"],
+                  ["video", "동영상"],
+                ] as const
+              ).map(([type, label]) => (
+                <Button
+                  key={type}
+                  type="button"
+                  size="sm"
+                  variant={contentType === type ? "default" : "outline"}
+                  aria-pressed={contentType === type}
+                  onClick={() => {
+                    setContentType(type);
+                    setMediaFile(null);
+                    setMessage(null);
+                    setMetadataFailed(false);
+                    setHasPreview(false);
+                  }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
 
-          {isFetchingMetadata ? (
+          {contentType === "link" ? (
+            <label>
+              URL
+              <Input
+                required
+                type="url"
+                placeholder="https://"
+                value={form.url}
+                onChange={(event) => {
+                  updateField("url", event.target.value);
+                  setMetadataFailed(false);
+                  setHasPreview(false);
+                }}
+                onBlur={() => {
+                  void handleFetchMetadata();
+                }}
+              />
+            </label>
+          ) : (
+            <label>
+              {contentType === "image" ? "사진 파일" : "동영상 파일"}
+              <Input
+                key={contentType}
+                type="file"
+                accept={getAllowedMimeTypes(contentType).join(",")}
+                onChange={(event) =>
+                  setMediaFile(event.target.files?.[0] ?? null)
+                }
+              />
+              <span className="field-help">
+                {contentType === "image"
+                  ? "JPG, PNG, GIF, WebP, AVIF, HEIC · 최대 10MB"
+                  : "MP4, MOV, WebM · 최대 50MB"}
+              </span>
+            </label>
+          )}
+
+          {contentType === "link" && isFetchingMetadata ? (
             <p className="status-message">미리보기를 불러오는 중입니다.</p>
           ) : null}
 
-          {hasPreview ? (
+          {contentType === "link" && hasPreview ? (
             <div className="metadata-preview" aria-label="링크 미리보기">
               {form.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -309,7 +420,7 @@ export function ItemFormDialog({
             </div>
           ) : null}
 
-          {metadataFailed ? (
+          {contentType === "link" && metadataFailed ? (
             <label>
               제목
               <Input
@@ -335,8 +446,15 @@ export function ItemFormDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit" disabled={isSubmitting || isFetchingMetadata}>
-              {isSubmitting ? "저장 중" : "저장"}
+            <Button
+              type="submit"
+              disabled={isSubmitting || isFetchingMetadata}
+            >
+              {isSubmitting
+                ? contentType === "link"
+                  ? "저장 중"
+                  : "업로드 중"
+                : "저장"}
             </Button>
           </footer>
         </form>
