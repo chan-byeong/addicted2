@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { RoughAnnotation } from '@/components/rough-annotation';
 import { Button } from '@/components/retroui/Button';
@@ -29,6 +29,8 @@ function getHostname(url: string) {
 
 export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: LinkCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const noteId = useId();
   const createdAt = new Date(item.createdAt).toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -36,6 +38,16 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
 
   return (
     <Card className='link-card' role='article'>
+      {item.note ? (
+        <button
+          type='button'
+          className='link-card__toggle'
+          aria-expanded={isNoteExpanded}
+          aria-controls={noteId}
+          aria-label={`${item.title} 메모 ${isNoteExpanded ? '접기' : '펼치기'}`}
+          onClick={() => setIsNoteExpanded((expanded) => !expanded)}
+        />
+      ) : null}
       {item.imageUrl && !imageFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -67,7 +79,14 @@ export function LinkCard({ item, emphasizeTitle = false, onEdit, onDelete }: Lin
           <span>{createdAt}</span>
         </div>
         {item.description ? <p>{item.description}</p> : null}
-        {item.note ? <p className='link-note'>{item.note}</p> : null}
+        {item.note ? (
+          <p
+            id={noteId}
+            className={`link-note${isNoteExpanded ? ' is-expanded' : ''}`}
+          >
+            {item.note}
+          </p>
+        ) : null}
       </div>
     </Card>
   );

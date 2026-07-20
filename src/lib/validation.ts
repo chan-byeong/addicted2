@@ -27,6 +27,20 @@ function nullableTrimmedStringSchema(maxLength: number) {
   }, z.union([z.string().max(maxLength), z.null()]));
 }
 
+function nullablePreservedStringSchema(maxLength: number) {
+  return z.preprocess((value) => {
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    if (typeof value === "string" && value.trim() === "") {
+      return null;
+    }
+
+    return value;
+  }, z.union([z.string().max(maxLength), z.null()]));
+}
+
 const nullableUrlSchema = z.preprocess((value) => {
   if (value === undefined || value === null) {
     return null;
@@ -41,6 +55,7 @@ const nullableUrlSchema = z.preprocess((value) => {
 }, z.union([normalizedUrlSchema, z.null()]));
 
 const nullableTextSchema = nullableTrimmedStringSchema(500);
+const nullableNoteSchema = nullablePreservedStringSchema(500);
 const nullableSiteNameSchema = nullableTrimmedStringSchema(120);
 
 export const metadataRequestSchema = z.object({
@@ -54,7 +69,7 @@ const itemPayloadSchema = z.object({
   imageUrl: nullableUrlSchema,
   siteName: nullableSiteNameSchema,
   sourceType: z.enum(SOURCE_TYPES),
-  note: nullableTextSchema,
+  note: nullableNoteSchema,
   authorName: z.string().trim().min(1).max(40),
   entryDate: dateKeySchema,
 });

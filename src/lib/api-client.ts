@@ -47,22 +47,35 @@ export async function fetchItems(params: ItemListParams) {
 }
 
 export async function fetchMetadata(url: string) {
-  return parseJsonResponse<{
-    ok: boolean;
-    url: string;
-    title?: string;
-    description?: string | null;
-    imageUrl?: string | null;
-    siteName?: string | null;
-    sourceType: ArchiveItem["sourceType"];
-    message?: string;
-  }>(
+  const metadata = await parseJsonResponse<
+    | {
+        ok: true;
+        url: string;
+        title: string;
+        description: string | null;
+        imageUrl: string | null;
+        siteName: string | null;
+        sourceType: ArchiveItem["sourceType"];
+      }
+    | {
+        ok: false;
+        url: string;
+        sourceType: ArchiveItem["sourceType"];
+        message: string;
+      }
+  >(
     await fetch("/api/items/metadata", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ url }),
     }),
   );
+
+  if (!metadata.ok) {
+    throw new Error(metadata.message || "미리보기를 가져오지 못했습니다.");
+  }
+
+  return metadata;
 }
 
 export async function createItem(input: ArchiveItemInput) {

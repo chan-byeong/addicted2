@@ -73,6 +73,20 @@ describe("validation schemas", () => {
     expect(result.siteName).toBeNull();
   });
 
+  it("preserves note whitespace and line breaks", () => {
+    const note = "  첫 번째 줄\n두 번째 줄  ";
+    const result = createItemSchema.parse({
+      url: "https://example.com/a",
+      title: "Example title",
+      sourceType: "other",
+      authorName: "민수",
+      entryDate: "2026-07-01",
+      note,
+    });
+
+    expect(result.note).toBe(note);
+  });
+
   it("rejects malformed nullable URLs through zod parsing", () => {
     const result = upsertItemSchema.safeParse({
       url: "https://example.com/a",

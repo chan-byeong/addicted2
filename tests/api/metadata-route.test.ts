@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/metadata", () => ({
   fetchLinkMetadata: vi.fn(),
@@ -7,6 +7,10 @@ vi.mock("@/lib/metadata", () => ({
 describe("POST /api/items/metadata", () => {
   beforeEach(() => {
     vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("returns metadata for a valid URL", async () => {
@@ -42,10 +46,11 @@ describe("POST /api/items/metadata", () => {
   });
 
   it("returns a recoverable failure when metadata fetch fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { fetchLinkMetadata } = await import("@/lib/metadata");
     vi.mocked(fetchLinkMetadata).mockResolvedValue({
       ok: false,
-      url: "https://example.com/post",
+      url: "https://example.com/post?token=secret#comments",
       sourceType: "other",
       message: "Metadata request failed with 403",
     });
@@ -61,9 +66,14 @@ describe("POST /api/items/metadata", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: false,
-      url: "https://example.com/post",
+      url: "https://example.com/post?token=secret#comments",
       sourceType: "other",
       message: "Metadata request failed with 403",
+    });
+    expect(warnSpy).toHaveBeenCalledWith("[metadata-api] fetch-failed", {
+      url: "https://example.com/post",
+      sourceType: "other",
+      reason: "Metadata request failed with 403",
     });
   });
 

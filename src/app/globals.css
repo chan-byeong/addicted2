@@ -245,11 +245,26 @@ a:focus-visible {
 }
 
 .link-card {
+  position: relative;
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
   padding: 10px;
+}
+
+.link-card__toggle {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.link-card__toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
 }
 
 .link-list.compact .link-card {
@@ -299,6 +314,8 @@ a:focus-visible {
 }
 
 .link-title {
+  position: relative;
+  z-index: 2;
   display: inline;
   color: var(--foreground);
   font-size: 15px;
@@ -339,10 +356,22 @@ a:focus-visible {
 }
 
 .link-note {
+  display: -webkit-box;
+  overflow: hidden;
   border-left: 2px solid var(--border);
   padding: 6px 0 6px 9px;
   background: transparent;
   color: var(--foreground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.link-note.is-expanded {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
 }
 
 .link-actions {

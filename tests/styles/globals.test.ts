@@ -14,7 +14,7 @@ describe("global design tokens", () => {
     expect(css).toContain("@fontsource/pretendard/500.css");
     expect(css).toContain("@fontsource/pretendard/600.css");
     expect(css).toContain("@fontsource/pretendard/700.css");
-    expect(css).toContain('--font-sans: "Pretendard"');
+    expect(css).toContain("--font-sans: 'Pretendard'");
     expect(css).not.toMatch(/gaegu/i);
   });
 

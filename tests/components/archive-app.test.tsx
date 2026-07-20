@@ -101,6 +101,64 @@ describe("ArchiveApp", () => {
     });
   });
 
+  it("requests metadata again after a failed result", async () => {
+    const user = userEvent.setup();
+    let metadataRequests = 0;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request) => {
+        const href = String(url);
+
+        if (href.includes("/api/items/metadata")) {
+          metadataRequests += 1;
+
+          if (metadataRequests === 1) {
+            return Response.json({
+              ok: false,
+              url: "https://example.com/retry",
+              sourceType: "other",
+              message: "Metadata request failed with 503",
+            });
+          }
+
+          return Response.json({
+            ok: true,
+            url: "https://example.com/retry",
+            title: "재시도 성공",
+            description: null,
+            imageUrl: null,
+            siteName: "Example",
+            sourceType: "other",
+          });
+        }
+
+        if (href.includes("/api/items")) {
+          return Response.json({ items: [item] });
+        }
+
+        return Response.json({}, { status: 404 });
+      }),
+    );
+
+    renderArchiveApp();
+    await user.click(screen.getByRole("button", { name: "등록" }));
+    await user.type(screen.getByLabelText("URL"), "https://example.com/retry");
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("제목")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("URL"));
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("링크 미리보기")).toBeInTheDocument();
+    });
+    expect(metadataRequests).toBe(2);
+  });
+
   it("reuses cached metadata for repeated saves of the same URL", async () => {
     const user = userEvent.setup();
     const items: ArchiveItem[] = [];

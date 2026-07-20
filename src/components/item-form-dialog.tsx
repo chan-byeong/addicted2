@@ -219,7 +219,7 @@ export function ItemFormDialog({
         imageUrl: nextForm.imageUrl.trim() || null,
         siteName: nextForm.siteName.trim() || null,
         sourceType: nextForm.sourceType || detectSourceType(normalizedUrl),
-        note: nextForm.note.trim() || null,
+        note: nextForm.note || null,
         authorName: nextForm.authorName.trim() || "익명",
         entryDate: nextForm.entryDate,
       };
